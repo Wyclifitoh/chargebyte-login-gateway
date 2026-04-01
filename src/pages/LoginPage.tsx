@@ -3,30 +3,26 @@ import { useNavigate } from "react-router-dom";
 import { Eye, EyeOff, Mail, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useAuth } from "@/contexts/AuthContext";
 import loginBg from "@/assets/login-bg.jpg";
 import logo from "@/assets/chargebyte-logo.png";
 
-type UserRole = "super_admin" | "admin" | "staff" | "location_partner" | "advertising_client";
-
-const ROLE_DASHBOARD_MAP: Record<UserRole, string> = {
-  super_admin: "/dashboard/super-admin",
-  admin: "/dashboard/admin",
-  staff: "/dashboard/staff",
-  location_partner: "/dashboard/location-partner",
-  advertising_client: "/dashboard/advertising-client",
-};
-
 const LoginPage = () => {
   const navigate = useNavigate();
+  const { login, isAuthenticated } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string; general?: string }>({});
   const [isLoading, setIsLoading] = useState(false);
 
-  const validateEmail = (email: string) => {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-  };
+  // If already logged in, redirect
+  if (isAuthenticated) {
+    navigate("/dashboard");
+    return null;
+  }
+
+  const validateEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,13 +48,14 @@ const LoginPage = () => {
     setErrors({});
     setIsLoading(true);
 
-    // Simulate login — replace with real auth when backend is connected
-    setTimeout(() => {
-      setIsLoading(false);
-      // Simulated failure for demo
-      setErrors({ general: "Invalid email or password. Please try again." });
-      // On success, you'd do: navigate(ROLE_DASHBOARD_MAP[userRole]);
-    }, 1500);
+    const result = await login(email, password);
+    setIsLoading(false);
+
+    if (result.success) {
+      navigate("/dashboard");
+    } else {
+      setErrors({ general: result.error || "Invalid email or password" });
+    }
   };
 
   return (
@@ -77,28 +74,26 @@ const LoginPage = () => {
             <p className="text-login-panel-foreground/70 leading-relaxed">
               Manage your charging infrastructure, monitor stations, track revenue, and grow your network — all from one powerful dashboard.
             </p>
+            <div className="mt-8 space-y-2 text-sm text-login-panel-foreground/50">
+              <p>Demo accounts (any password):</p>
+              <p>• superadmin@chargebyte.com</p>
+              <p>• admin@chargebyte.com</p>
+              <p>• staff@chargebyte.com</p>
+              <p>• partner@chargebyte.com</p>
+              <p>• adclient@chargebyte.com</p>
+            </div>
           </div>
           <p className="text-login-panel-foreground/40 text-sm">
             © {new Date().getFullYear()} ChargeByte. All rights reserved.
           </p>
         </div>
 
-        {/* Right Panel — Background Image + Form */}
+        {/* Right Panel */}
         <div className="relative flex w-full flex-col items-center justify-center lg:w-7/12">
-          {/* Background image */}
-          <img
-            src={loginBg}
-            alt=""
-            className="absolute inset-0 h-full w-full object-cover"
-            width={1920}
-            height={1080}
-          />
-          {/* Overlay */}
+          <img src={loginBg} alt="" className="absolute inset-0 h-full w-full object-cover" width={1920} height={1080} />
           <div className="absolute inset-0 bg-foreground/80 backdrop-blur-sm" />
 
-          {/* Form */}
           <div className="relative z-10 w-full max-w-md px-8 py-12">
-            {/* Mobile logo */}
             <div className="flex items-center gap-3 mb-8 lg:hidden">
               <img src={logo} alt="ChargeByte Logo" width={40} height={40} />
               <span className="text-xl font-bold text-primary">ChargeByte</span>
@@ -121,7 +116,7 @@ const LoginPage = () => {
                     type="email"
                     placeholder="Email address"
                     value={email}
-                    onChange={(e) => { setEmail(e.target.value); setErrors(prev => ({ ...prev, email: undefined })); }}
+                    onChange={(e) => { setEmail(e.target.value); setErrors((prev) => ({ ...prev, email: undefined })); }}
                     className="pl-10 bg-login-panel-foreground/10 border-login-panel-foreground/20 text-login-panel-foreground placeholder:text-login-panel-foreground/40 focus-visible:ring-primary h-12"
                   />
                 </div>
@@ -135,14 +130,10 @@ const LoginPage = () => {
                     type={showPassword ? "text" : "password"}
                     placeholder="Password"
                     value={password}
-                    onChange={(e) => { setPassword(e.target.value); setErrors(prev => ({ ...prev, password: undefined })); }}
+                    onChange={(e) => { setPassword(e.target.value); setErrors((prev) => ({ ...prev, password: undefined })); }}
                     className="pl-10 pr-10 bg-login-panel-foreground/10 border-login-panel-foreground/20 text-login-panel-foreground placeholder:text-login-panel-foreground/40 focus-visible:ring-primary h-12"
                   />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-login-panel-foreground/40 hover:text-login-panel-foreground/70 transition-colors"
-                  >
+                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-login-panel-foreground/40 hover:text-login-panel-foreground/70 transition-colors">
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
@@ -155,11 +146,7 @@ const LoginPage = () => {
                 </button>
               </div>
 
-              <Button
-                type="submit"
-                disabled={isLoading}
-                className="w-full h-12 bg-primary text-accent-foreground hover:bg-primary/90 font-semibold text-base transition-all"
-              >
+              <Button type="submit" disabled={isLoading} className="w-full h-12 bg-primary text-accent-foreground hover:bg-primary/90 font-semibold text-base transition-all">
                 {isLoading ? (
                   <span className="flex items-center gap-2">
                     <span className="h-4 w-4 animate-spin rounded-full border-2 border-accent-foreground/30 border-t-accent-foreground" />
