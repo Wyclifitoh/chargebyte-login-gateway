@@ -60,6 +60,10 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        "login-panel": {
+          DEFAULT: "hsl(var(--login-panel))",
+          foreground: "hsl(var(--login-panel-foreground))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
