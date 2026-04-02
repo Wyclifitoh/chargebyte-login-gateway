@@ -13,6 +13,8 @@ const STATUS_VARIANTS: Record<string, string> = {
   offline: "bg-muted text-muted-foreground",
   cancelled: "bg-red-100 text-red-700",
   failed: "bg-red-100 text-red-700",
+  overdue: "bg-orange-100 text-orange-700",
+  scheduled: "bg-blue-100 text-blue-700",
 };
 
 const StatusBadge = ({ status }: StatusBadgeProps) => {
