@@ -72,3 +72,51 @@ export interface Transaction {
   type: "rental" | "subscription" | "penalty";
   status: "completed" | "pending" | "failed";
 }
+
+export interface Campaign {
+  id: string;
+  name: string;
+  client: string;
+  startDate: string;
+  endDate: string;
+  locations: string[];
+  impressions: number;
+  interactions: number;
+  ctr: number;
+  spend: number;
+  status: "active" | "completed" | "scheduled" | "paused";
+}
+
+export interface Lead {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  source: string;
+  station: string;
+  status: "new" | "contacted" | "qualified" | "converted" | "lost";
+  createdAt: string;
+  notes: string;
+}
+
+export interface Report {
+  id: string;
+  title: string;
+  type: "daily" | "weekly" | "monthly";
+  station: string;
+  submittedBy: string;
+  date: string;
+  status: "draft" | "submitted" | "reviewed";
+  summary: string;
+}
+
+export interface Activity {
+  id: string;
+  title: string;
+  type: "maintenance" | "meeting" | "installation" | "inspection";
+  assignedTo: string;
+  station: string;
+  date: string;
+  status: "planned" | "in_progress" | "completed" | "cancelled";
+  description: string;
+}

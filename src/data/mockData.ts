@@ -1,4 +1,5 @@
 import { Rental, Machine, Station, Transaction } from "@/types/dashboard";
+import { Campaign, Lead, Report, Activity } from "@/types/dashboard";
 
 export const mockRentals: Rental[] = [
   { id: "R001", customer: "John Doe", station: "Downtown Hub", machine: "CB-001", startTime: "2026-03-28 08:00", endTime: "2026-03-28 10:30", status: "completed", amount: 12.50 },
@@ -53,3 +54,37 @@ export const sessionsByStation = [
   { name: "Tech Park", sessions: 3800 },
   { name: "University", sessions: 900 },
 ];
+
+export const mockCampaigns: Campaign[] = [
+  { id: "C001", name: "Spring EV Promo", client: "GreenAuto Inc", startDate: "2026-03-01", endDate: "2026-04-15", locations: ["Downtown Hub", "Airport Terminal"], impressions: 45200, interactions: 3800, ctr: 8.4, spend: 12000, status: "active" },
+  { id: "C002", name: "Airport Display Ads", client: "TravelCharge Co", startDate: "2026-02-15", endDate: "2026-03-31", locations: ["Airport Terminal"], impressions: 78500, interactions: 5200, ctr: 6.6, spend: 18500, status: "completed" },
+  { id: "C003", name: "Campus Awareness", client: "EduPower Ltd", startDate: "2026-04-01", endDate: "2026-06-30", locations: ["University", "Tech Park"], impressions: 12300, interactions: 980, ctr: 7.9, spend: 5500, status: "active" },
+  { id: "C004", name: "Mall Weekend Blitz", client: "ShopVolt", startDate: "2026-04-10", endDate: "2026-04-20", locations: ["Mall Plaza"], impressions: 0, interactions: 0, ctr: 0, spend: 8000, status: "scheduled" },
+];
+
+export const mockLeads: Lead[] = [
+  { id: "L001", name: "David Park", email: "david@example.com", phone: "+1-555-0101", source: "Walk-in", station: "Downtown Hub", status: "new", createdAt: "2026-04-01", notes: "Interested in monthly plan" },
+  { id: "L002", name: "Emma Roberts", email: "emma@example.com", phone: "+1-555-0102", source: "Online", station: "Airport Terminal", status: "contacted", createdAt: "2026-03-30", notes: "Needs fleet pricing" },
+  { id: "L003", name: "Frank Miller", email: "frank@example.com", phone: "+1-555-0103", source: "Referral", station: "Tech Park", status: "qualified", createdAt: "2026-03-28", notes: "" },
+];
+
+export const mockReports: Report[] = [
+  { id: "RP001", title: "Daily Station Check - Downtown", type: "daily", station: "Downtown Hub", submittedBy: "Sam Chen", date: "2026-04-01", status: "submitted", summary: "All machines operational. Minor cleaning needed at slot 3." },
+  { id: "RP002", title: "Weekly Revenue Summary", type: "weekly", station: "All Stations", submittedBy: "Sam Chen", date: "2026-03-31", status: "reviewed", summary: "Revenue up 12% week-over-week. Airport Terminal leading." },
+  { id: "RP003", title: "Monthly Maintenance Log", type: "monthly", station: "Airport Terminal", submittedBy: "Jordan Lee", date: "2026-03-30", status: "submitted", summary: "CB-012 requires part replacement. Scheduled for next week." },
+];
+
+export const mockActivities: Activity[] = [
+  { id: "A001", title: "Inspect CB-012 at Airport", type: "maintenance", assignedTo: "Sam Chen", station: "Airport Terminal", date: "2026-04-03", status: "planned", description: "Check and replace faulty connector." },
+  { id: "A002", title: "Client meeting - GreenAuto", type: "meeting", assignedTo: "Jordan Lee", station: "Downtown Hub", date: "2026-04-02", status: "in_progress", description: "Discuss campaign extension and new placements." },
+  { id: "A003", title: "Install new machine at Mall", type: "installation", assignedTo: "Sam Chen", station: "Mall Plaza", date: "2026-04-05", status: "planned", description: "Set up CB-025 at Mall Plaza slot 4." },
+];
+
+// Partner-specific machine data with extended fields
+export const mockPartnerMachines = mockMachines.map((m) => ({
+  ...m,
+  revenue: Math.round(Math.random() * 15000 + 2000),
+  availableSlots: Math.floor(Math.random() * 4 + 1),
+  lastMaintenance: "2026-03-" + String(Math.floor(Math.random() * 28 + 1)).padStart(2, "0"),
+  powerbankHealth: Math.floor(Math.random() * 30 + 70),
+}));
