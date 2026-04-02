@@ -26,10 +26,10 @@ export const ROLE_DASHBOARD_PATHS: Record<UserRole, string> = {
 
 // Which nav items each role can see
 export const ROLE_NAV_ACCESS: Record<UserRole, string[]> = {
-  super_admin: ["overview", "rentals", "machines", "stations", "revenue", "users"],
-  admin: ["overview", "rentals", "machines", "stations", "revenue"],
-  staff: ["overview", "rentals", "machines"],
-  location_partner: ["overview", "machines", "revenue"],
+  super_admin: ["overview", "rentals", "machines", "stations", "revenue", "users", "forms"],
+  admin: ["overview", "rentals", "machines", "stations", "revenue", "forms"],
+  staff: ["overview", "rentals", "machines", "forms"],
+  location_partner: ["overview", "partner", "revenue"],
   advertising_client: ["overview", "campaigns"],
 };
 
@@ -71,4 +71,52 @@ export interface Transaction {
   amount: number;
   type: "rental" | "subscription" | "penalty";
   status: "completed" | "pending" | "failed";
+}
+
+export interface Campaign {
+  id: string;
+  name: string;
+  client: string;
+  startDate: string;
+  endDate: string;
+  locations: string[];
+  impressions: number;
+  interactions: number;
+  ctr: number;
+  spend: number;
+  status: "active" | "completed" | "scheduled" | "paused";
+}
+
+export interface Lead {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  source: string;
+  station: string;
+  status: "new" | "contacted" | "qualified" | "converted" | "lost";
+  createdAt: string;
+  notes: string;
+}
+
+export interface Report {
+  id: string;
+  title: string;
+  type: "daily" | "weekly" | "monthly";
+  station: string;
+  submittedBy: string;
+  date: string;
+  status: "draft" | "submitted" | "reviewed";
+  summary: string;
+}
+
+export interface Activity {
+  id: string;
+  title: string;
+  type: "maintenance" | "meeting" | "installation" | "inspection";
+  assignedTo: string;
+  station: string;
+  date: string;
+  status: "planned" | "in_progress" | "completed" | "cancelled";
+  description: string;
 }

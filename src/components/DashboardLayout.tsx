@@ -2,7 +2,7 @@ import { ReactNode } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { ROLE_NAV_ACCESS, ROLE_LABELS } from "@/types/dashboard";
 import { useNavigate, useLocation } from "react-router-dom";
-import { LogOut, ChevronDown, Zap, LayoutDashboard, Car, Cpu, MapPin, DollarSign, Users, Megaphone, Menu, X } from "lucide-react";
+import { LogOut, ChevronDown, Zap, LayoutDashboard, Car, Cpu, MapPin, DollarSign, Users, Megaphone, ClipboardList, Menu, X } from "lucide-react";
 import { useState } from "react";
 import logo from "@/assets/chargebyte-logo.png";
 
@@ -13,7 +13,9 @@ const NAV_ITEMS = [
   { id: "stations", label: "Stations", icon: MapPin, path: "/dashboard/stations" },
   { id: "revenue", label: "Revenue", icon: DollarSign, path: "/dashboard/revenue" },
   { id: "users", label: "Users", icon: Users, path: "/dashboard/users" },
+  { id: "forms", label: "Forms", icon: ClipboardList, path: "/dashboard/forms" },
   { id: "campaigns", label: "Campaigns", icon: Megaphone, path: "/dashboard/campaigns" },
+  { id: "partner", label: "My Machines", icon: Cpu, path: "/dashboard/partner" },
 ];
 
 const DashboardLayout = ({ children }: { children: ReactNode }) => {
