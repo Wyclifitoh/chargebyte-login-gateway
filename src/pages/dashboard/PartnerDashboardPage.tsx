@@ -47,10 +47,10 @@ const PartnerDashboardPage = () => {
 
       {/* Metrics */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <MetricCard title="Total Machines" value={filtered.length} icon={Cpu} />
-        <MetricCard title="Online" value={onlineCount} icon={Cpu} trend={{ value: Math.round((onlineCount / (filtered.length || 1)) * 100), positive: true }} />
-        <MetricCard title="Total Revenue" value={`$${totalRevenue.toLocaleString()}`} icon={DollarSign} />
-        <MetricCard title="Avg PB Health" value={`${avgHealth}%`} icon={Battery} />
+        <MetricCard title="Total Machines" value={filtered.length} icon={<Cpu className="h-5 w-5" />} />
+        <MetricCard title="Online" value={onlineCount} change={Math.round((onlineCount / (filtered.length || 1)) * 100)} icon={<Cpu className="h-5 w-5" />} />
+        <MetricCard title="Total Revenue" value={`$${totalRevenue.toLocaleString()}`} icon={<DollarSign className="h-5 w-5" />} />
+        <MetricCard title="Avg PB Health" value={`${avgHealth}%`} icon={<Battery className="h-5 w-5" />} />
       </div>
 
       {/* Filters */}

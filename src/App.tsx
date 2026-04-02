@@ -42,6 +42,8 @@ const App = () => (
             <Route path="/dashboard/revenue" element={<DashboardRoute section="revenue"><RevenuePage /></DashboardRoute>} />
             <Route path="/dashboard/users" element={<DashboardRoute section="users"><UsersPage /></DashboardRoute>} />
             <Route path="/dashboard/campaigns" element={<DashboardRoute section="campaigns"><CampaignsPage /></DashboardRoute>} />
+            <Route path="/dashboard/forms" element={<DashboardRoute section="forms"><FormsPage /></DashboardRoute>} />
+            <Route path="/dashboard/partner" element={<DashboardRoute section="partner"><PartnerDashboardPage /></DashboardRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>

@@ -40,10 +40,10 @@ const CampaignsPage = () => {
       <h1 className="text-2xl font-bold text-foreground">Campaigns</h1>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <MetricCard title="Total Campaigns" value={filtered.length} icon={Megaphone} />
-        <MetricCard title="Impressions" value={totalImpressions.toLocaleString()} icon={Eye} />
-        <MetricCard title="Interactions" value={totalInteractions.toLocaleString()} icon={MousePointerClick} />
-        <MetricCard title="Total Spend" value={`$${totalSpend.toLocaleString()}`} icon={DollarSign} />
+        <MetricCard title="Total Campaigns" value={filtered.length} icon={<Megaphone className="h-5 w-5" />} />
+        <MetricCard title="Impressions" value={totalImpressions.toLocaleString()} icon={<Eye className="h-5 w-5" />} />
+        <MetricCard title="Interactions" value={totalInteractions.toLocaleString()} icon={<MousePointerClick className="h-5 w-5" />} />
+        <MetricCard title="Total Spend" value={`$${totalSpend.toLocaleString()}`} icon={<DollarSign className="h-5 w-5" />} />
       </div>
 
       <Card className="border-border">
