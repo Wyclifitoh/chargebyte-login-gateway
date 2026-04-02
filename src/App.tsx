@@ -15,6 +15,8 @@ import StationsPage from "@/pages/dashboard/StationsPage";
 import RevenuePage from "@/pages/dashboard/RevenuePage";
 import UsersPage from "@/pages/dashboard/UsersPage";
 import CampaignsPage from "@/pages/dashboard/CampaignsPage";
+import FormsPage from "@/pages/dashboard/FormsPage";
+import PartnerDashboardPage from "@/pages/dashboard/PartnerDashboardPage";
 
 const queryClient = new QueryClient();
 
