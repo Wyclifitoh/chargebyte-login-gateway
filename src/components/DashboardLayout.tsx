@@ -2,9 +2,10 @@ import { ReactNode } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { ROLE_NAV_ACCESS, ROLE_LABELS } from "@/types/dashboard";
 import { useNavigate, useLocation } from "react-router-dom";
-import { LogOut, ChevronDown, Zap, LayoutDashboard, Car, Cpu, MapPin, DollarSign, Users, Megaphone, ClipboardList, Menu, X } from "lucide-react";
+import { LogOut, ChevronDown, Zap, LayoutDashboard, Car, Cpu, MapPin, DollarSign, Users, Megaphone, ClipboardList, Menu, X, CreditCard, Shield, Briefcase, Bell } from "lucide-react";
 import { useState } from "react";
 import logo from "@/assets/chargebyte-logo.png";
+import { mockNotifications } from "@/data/extendedMockData";
 
 const NAV_ITEMS = [
   { id: "overview", label: "Overview", icon: LayoutDashboard, path: "/dashboard" },
@@ -16,6 +17,10 @@ const NAV_ITEMS = [
   { id: "forms", label: "Forms", icon: ClipboardList, path: "/dashboard/forms" },
   { id: "campaigns", label: "Campaigns", icon: Megaphone, path: "/dashboard/campaigns" },
   { id: "partner", label: "My Machines", icon: Cpu, path: "/dashboard/partner" },
+  { id: "transactions", label: "M-Pesa", icon: CreditCard, path: "/dashboard/transactions" },
+  { id: "audit", label: "Audit Logs", icon: Shield, path: "/dashboard/audit" },
+  { id: "operations", label: "Operations", icon: Briefcase, path: "/dashboard/operations" },
+  { id: "notifications", label: "Alerts", icon: Bell, path: "/dashboard/notifications" },
 ];
 
 const DashboardLayout = ({ children }: { children: ReactNode }) => {
