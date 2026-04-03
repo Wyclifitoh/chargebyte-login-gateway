@@ -49,9 +49,23 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
             <span className="text-lg font-bold text-foreground">ChargeByte</span>
           </div>
 
-          {/* Profile */}
-          <div className="flex items-center gap-3">
+          {/* Notification bell + Profile */}
+          <div className="flex items-center gap-2">
+            {/* Notification bell */}
             <div className="relative">
+              <button
+                onClick={() => navigate("/dashboard/notifications")}
+                className="relative p-2 rounded-lg hover:bg-muted transition-colors"
+              >
+                <Bell className="h-5 w-5 text-muted-foreground" />
+                {(() => {
+                  const unread = mockNotifications.filter((n) => !n.read && user && n.roles.includes(user.role)).length;
+                  return unread > 0 ? (
+                    <span className="absolute top-1 right-1 h-4 w-4 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">{unread}</span>
+                  ) : null;
+                })()}
+              </button>
+            </div>
               <button
                 onClick={() => setProfileOpen(!profileOpen)}
                 className="flex items-center gap-2 rounded-lg px-3 py-2 hover:bg-muted transition-colors"
