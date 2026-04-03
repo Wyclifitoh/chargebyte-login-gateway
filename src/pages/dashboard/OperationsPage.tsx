@@ -64,7 +64,7 @@ const LeadsTab = () => {
   });
 
   const onSubmit = (data: LeadFormValues) => {
-    const newLead: StaffLead = { ...data, id: `SL${String(leads.length + 1).padStart(3, "0")}`, status: "new", notes: data.notes || "", created_at: new Date().toISOString().split("T")[0] };
+    const newLead: StaffLead = { name: data.name, email: data.email, phone: data.phone, source: data.source, station: data.station, owner: data.owner, follow_up_date: data.follow_up_date, id: `SL${String(leads.length + 1).padStart(3, "0")}`, status: "new", notes: data.notes || "", created_at: new Date().toISOString().split("T")[0] };
     setLeads((prev) => [newLead, ...prev]);
     setDialogOpen(false);
     form.reset();
