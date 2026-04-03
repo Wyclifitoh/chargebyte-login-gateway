@@ -2,9 +2,10 @@ import { ReactNode } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { ROLE_NAV_ACCESS, ROLE_LABELS } from "@/types/dashboard";
 import { useNavigate, useLocation } from "react-router-dom";
-import { LogOut, ChevronDown, Zap, LayoutDashboard, Car, Cpu, MapPin, DollarSign, Users, Megaphone, ClipboardList, Menu, X } from "lucide-react";
+import { LogOut, ChevronDown, Zap, LayoutDashboard, Car, Cpu, MapPin, DollarSign, Users, Megaphone, ClipboardList, Menu, X, CreditCard, Shield, Briefcase, Bell } from "lucide-react";
 import { useState } from "react";
 import logo from "@/assets/chargebyte-logo.png";
+import { mockNotifications } from "@/data/extendedMockData";
 
 const NAV_ITEMS = [
   { id: "overview", label: "Overview", icon: LayoutDashboard, path: "/dashboard" },
@@ -16,6 +17,10 @@ const NAV_ITEMS = [
   { id: "forms", label: "Forms", icon: ClipboardList, path: "/dashboard/forms" },
   { id: "campaigns", label: "Campaigns", icon: Megaphone, path: "/dashboard/campaigns" },
   { id: "partner", label: "My Machines", icon: Cpu, path: "/dashboard/partner" },
+  { id: "transactions", label: "M-Pesa", icon: CreditCard, path: "/dashboard/transactions" },
+  { id: "audit", label: "Audit Logs", icon: Shield, path: "/dashboard/audit" },
+  { id: "operations", label: "Operations", icon: Briefcase, path: "/dashboard/operations" },
+  { id: "notifications", label: "Alerts", icon: Bell, path: "/dashboard/notifications" },
 ];
 
 const DashboardLayout = ({ children }: { children: ReactNode }) => {
@@ -44,8 +49,23 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
             <span className="text-lg font-bold text-foreground">ChargeByte</span>
           </div>
 
-          {/* Profile */}
-          <div className="flex items-center gap-3">
+          {/* Notification bell + Profile */}
+          <div className="flex items-center gap-2">
+            {/* Notification bell */}
+            <div className="relative">
+              <button
+                onClick={() => navigate("/dashboard/notifications")}
+                className="relative p-2 rounded-lg hover:bg-muted transition-colors"
+              >
+                <Bell className="h-5 w-5 text-muted-foreground" />
+                {(() => {
+                  const unread = mockNotifications.filter((n) => !n.read && user && n.roles.includes(user.role)).length;
+                  return unread > 0 ? (
+                    <span className="absolute top-1 right-1 h-4 w-4 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">{unread}</span>
+                  ) : null;
+                })()}
+              </button>
+            </div>
             <div className="relative">
               <button
                 onClick={() => setProfileOpen(!profileOpen)}
