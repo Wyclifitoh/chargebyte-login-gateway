@@ -59,10 +59,10 @@ const StationsTab = () => {
 
   const onSubmit = (data: StationFormValues) => {
     if (editing) {
-      setStations((prev) => prev.map((s) => s.id === editing.id ? { ...s, ...data } : s));
+      setStations((prev) => prev.map((s) => s.id === editing.id ? { ...s, name: data.name, address: data.address, county_name: data.county_name, host_partner: data.host_partner, revenue_share_percent: data.revenue_share_percent, open_hours: data.open_hours } : s));
       toast.success("Station updated");
     } else {
-      const newStation: ExtendedStation = { ...data, id: `S${String(stations.length + 1).padStart(3, "0")}`, latitude: 0, longitude: 0, is_active: true, machines_count: 0, features: [], image_url: "", created_at: new Date().toISOString().split("T")[0] };
+      const newStation: ExtendedStation = { name: data.name, address: data.address, county_name: data.county_name, host_partner: data.host_partner, revenue_share_percent: data.revenue_share_percent, open_hours: data.open_hours, id: `S${String(stations.length + 1).padStart(3, "0")}`, latitude: 0, longitude: 0, is_active: true, machines_count: 0, features: [], image_url: "", created_at: new Date().toISOString().split("T")[0] };
       setStations((prev) => [...prev, newStation]);
       toast.success("Station created");
     }
