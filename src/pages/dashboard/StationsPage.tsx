@@ -209,10 +209,10 @@ const MachinesTab = () => {
   const onSubmit = (data: MachineFormValues) => {
     const station = mockExtendedStations.find((s) => s.id === data.station_id);
     if (editing) {
-      setMachines((prev) => prev.map((m) => m.id === editing.id ? { ...m, ...data, station: station?.name || m.station } : m));
+      setMachines((prev) => prev.map((m) => m.id === editing.id ? { ...m, name: data.name, model: data.model, qr_code: data.qr_code, station_id: data.station_id, total_slots: data.total_slots, station: station?.name || m.station } : m));
       toast.success("Machine updated");
     } else {
-      const newMachine: ExtendedMachine = { ...data, id: `CB-${String(machines.length + 30).padStart(3, "0")}`, station: station?.name || "", available_slots: data.total_slots, status: "online", is_active: true, last_maintenance: new Date().toISOString().split("T")[0], created_at: new Date().toISOString().split("T")[0] };
+      const newMachine: ExtendedMachine = { name: data.name, model: data.model, qr_code: data.qr_code, station_id: data.station_id, total_slots: data.total_slots, id: `CB-${String(machines.length + 30).padStart(3, "0")}`, station: station?.name || "", available_slots: data.total_slots, status: "online", is_active: true, last_maintenance: new Date().toISOString().split("T")[0], created_at: new Date().toISOString().split("T")[0] };
       setMachines((prev) => [...prev, newMachine]);
       toast.success("Machine created");
     }

@@ -246,7 +246,7 @@ const DailyPlansTab = () => {
   const form = useForm<PlanFormValues>({ resolver: zodResolver(planSchema), defaultValues: { title: "", priority: "medium", deadline: "" } });
 
   const onSubmit = (data: PlanFormValues) => {
-    const newPlan: DailyPlan = { ...data, id: `DP${String(plans.length + 1).padStart(3, "0")}`, completed: false, created_at: new Date().toISOString().split("T")[0] };
+    const newPlan: DailyPlan = { title: data.title, priority: data.priority, deadline: data.deadline, id: `DP${String(plans.length + 1).padStart(3, "0")}`, completed: false, created_at: new Date().toISOString().split("T")[0] };
     setPlans((prev) => [newPlan, ...prev]);
     setDialogOpen(false);
     form.reset();
