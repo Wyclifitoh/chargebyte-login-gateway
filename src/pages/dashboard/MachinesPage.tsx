@@ -1,10 +1,11 @@
 import DataTable from "@/components/DataTable";
 import StatusBadge from "@/components/StatusBadge";
+import { PageHeader } from "@/components/shared";
 import { mockMachines } from "@/data/mockData";
 
 const MachinesPage = () => (
   <div className="space-y-6">
-    <h1 className="text-2xl font-bold text-foreground">Machines Overview</h1>
+    <PageHeader title="Machines Overview" description="View and monitor all charging machines" />
     <DataTable
       data={mockMachines}
       searchKey="name"

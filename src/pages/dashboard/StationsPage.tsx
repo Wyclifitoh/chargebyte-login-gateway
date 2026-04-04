@@ -7,13 +7,14 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Switch } from "@/components/ui/switch";
 import StatusBadge from "@/components/StatusBadge";
+import { PageHeader, FilterBar, EmptyState, DetailRow } from "@/components/shared";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { mockExtendedStations, mockExtendedMachines, ExtendedStation, ExtendedMachine } from "@/data/extendedMockData";
-import { Search, Plus, Eye, Pencil, Power, Wrench, MapPin, Cpu } from "lucide-react";
+import { Plus, Eye, Pencil, Power, Wrench, MapPin, Cpu } from "lucide-react";
 import { toast } from "sonner";
 
 const stationSchema = z.object({
@@ -47,7 +48,6 @@ const StationsTab = () => {
   const form = useForm<StationFormValues>({ resolver: zodResolver(stationSchema), defaultValues: { name: "", address: "", county_name: "", host_partner: "", revenue_share_percent: 10, open_hours: "" } });
 
   const counties = [...new Set(stations.map((s) => s.county_name))];
-
   const filtered = stations.filter((s) => {
     const matchSearch = s.name.toLowerCase().includes(search.toLowerCase()) || s.address.toLowerCase().includes(search.toLowerCase());
     const matchCounty = filterCounty === "all" || s.county_name === filterCounty;
@@ -59,7 +59,7 @@ const StationsTab = () => {
 
   const onSubmit = (data: StationFormValues) => {
     if (editing) {
-      setStations((prev) => prev.map((s) => s.id === editing.id ? { ...s, name: data.name, address: data.address, county_name: data.county_name, host_partner: data.host_partner, revenue_share_percent: data.revenue_share_percent, open_hours: data.open_hours } : s));
+      setStations((prev) => prev.map((s) => s.id === editing.id ? { ...s, ...data } : s));
       toast.success("Station updated");
     } else {
       const newStation: ExtendedStation = { name: data.name, address: data.address, county_name: data.county_name, host_partner: data.host_partner, revenue_share_percent: data.revenue_share_percent, open_hours: data.open_hours, id: `S${String(stations.length + 1).padStart(3, "0")}`, latitude: 0, longitude: 0, is_active: true, machines_count: 0, features: [], image_url: "", created_at: new Date().toISOString().split("T")[0] };
@@ -77,11 +77,7 @@ const StationsTab = () => {
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
-        <div className="flex gap-3 flex-1 w-full sm:w-auto">
-          <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Search stations..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9 h-9" />
-          </div>
+        <FilterBar searchValue={search} onSearchChange={setSearch} searchPlaceholder="Search stations...">
           <Select value={filterCounty} onValueChange={setFilterCounty}>
             <SelectTrigger className="w-[150px] h-9"><SelectValue placeholder="County" /></SelectTrigger>
             <SelectContent>
@@ -89,7 +85,7 @@ const StationsTab = () => {
               {counties.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
             </SelectContent>
           </Select>
-        </div>
+        </FilterBar>
         <Button onClick={openCreate} size="sm"><Plus className="h-4 w-4 mr-1" />Add Station</Button>
       </div>
 
@@ -129,15 +125,12 @@ const StationsTab = () => {
                   </td>
                 </tr>
               ))}
-              {filtered.length === 0 && (
-                <tr><td colSpan={9} className="px-4 py-8 text-center text-muted-foreground">No stations found</td></tr>
-              )}
+              {filtered.length === 0 && <tr><td colSpan={9}><EmptyState title="No stations found" /></td></tr>}
             </tbody>
           </table>
         </div>
       </Card>
 
-      {/* Station Form Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader><DialogTitle>{editing ? "Edit Station" : "Add New Station"}</DialogTitle></DialogHeader>
@@ -159,22 +152,21 @@ const StationsTab = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Station Detail Sheet */}
       <Sheet open={!!viewing} onOpenChange={() => setViewing(null)}>
         <SheetContent>
           <SheetHeader><SheetTitle>{viewing?.name}</SheetTitle></SheetHeader>
           {viewing && (
-            <div className="mt-6 space-y-4 text-sm">
-              <div><span className="text-muted-foreground">Address:</span> <span className="text-foreground ml-2">{viewing.address}</span></div>
-              <div><span className="text-muted-foreground">County:</span> <span className="text-foreground ml-2">{viewing.county_name}</span></div>
-              <div><span className="text-muted-foreground">Host Partner:</span> <span className="text-foreground ml-2">{viewing.host_partner}</span></div>
-              <div><span className="text-muted-foreground">Revenue Share:</span> <span className="text-foreground ml-2">{viewing.revenue_share_percent}%</span></div>
-              <div><span className="text-muted-foreground">Open Hours:</span> <span className="text-foreground ml-2">{viewing.open_hours}</span></div>
-              <div><span className="text-muted-foreground">Machines:</span> <span className="text-foreground ml-2">{viewing.machines_count}</span></div>
-              <div><span className="text-muted-foreground">Status:</span> <span className="ml-2"><StatusBadge status={viewing.is_active ? "active" : "inactive"} /></span></div>
-              <div><span className="text-muted-foreground">Features:</span> <span className="text-foreground ml-2">{viewing.features.join(", ") || "None"}</span></div>
-              <div><span className="text-muted-foreground">Coordinates:</span> <span className="text-foreground ml-2">{viewing.latitude}, {viewing.longitude}</span></div>
-              <div><span className="text-muted-foreground">Created:</span> <span className="text-foreground ml-2">{viewing.created_at}</span></div>
+            <div className="mt-6 space-y-1">
+              <DetailRow label="Address" value={viewing.address} />
+              <DetailRow label="County" value={viewing.county_name} />
+              <DetailRow label="Host Partner" value={viewing.host_partner} />
+              <DetailRow label="Revenue Share" value={`${viewing.revenue_share_percent}%`} />
+              <DetailRow label="Open Hours" value={viewing.open_hours} />
+              <DetailRow label="Machines" value={String(viewing.machines_count)} />
+              <DetailRow label="Status" value={<StatusBadge status={viewing.is_active ? "active" : "inactive"} />} />
+              <DetailRow label="Features" value={viewing.features.join(", ") || "None"} />
+              <DetailRow label="Coordinates" value={`${viewing.latitude}, ${viewing.longitude}`} />
+              <DetailRow label="Created" value={viewing.created_at} />
             </div>
           )}
         </SheetContent>
@@ -193,9 +185,7 @@ const MachinesTab = () => {
   const [viewing, setViewing] = useState<ExtendedMachine | null>(null);
 
   const form = useForm<MachineFormValues>({ resolver: zodResolver(machineSchema), defaultValues: { name: "", model: "", qr_code: "", station_id: "", total_slots: 8 } });
-
   const stationNames = [...new Set(machines.map((m) => m.station))];
-
   const filtered = machines.filter((m) => {
     const matchSearch = m.name.toLowerCase().includes(search.toLowerCase()) || m.qr_code.toLowerCase().includes(search.toLowerCase());
     const matchStation = filterStation === "all" || m.station === filterStation;
@@ -209,7 +199,7 @@ const MachinesTab = () => {
   const onSubmit = (data: MachineFormValues) => {
     const station = mockExtendedStations.find((s) => s.id === data.station_id);
     if (editing) {
-      setMachines((prev) => prev.map((m) => m.id === editing.id ? { ...m, name: data.name, model: data.model, qr_code: data.qr_code, station_id: data.station_id, total_slots: data.total_slots, station: station?.name || m.station } : m));
+      setMachines((prev) => prev.map((m) => m.id === editing.id ? { ...m, ...data, station: station?.name || m.station } : m));
       toast.success("Machine updated");
     } else {
       const newMachine: ExtendedMachine = { name: data.name, model: data.model, qr_code: data.qr_code, station_id: data.station_id, total_slots: data.total_slots, id: `CB-${String(machines.length + 30).padStart(3, "0")}`, station: station?.name || "", available_slots: data.total_slots, status: "online", is_active: true, last_maintenance: new Date().toISOString().split("T")[0], created_at: new Date().toISOString().split("T")[0] };
@@ -225,11 +215,7 @@ const MachinesTab = () => {
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
-        <div className="flex gap-3 flex-1 flex-wrap">
-          <div className="relative flex-1 min-w-[200px] max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Search machines..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9 h-9" />
-          </div>
+        <FilterBar searchValue={search} onSearchChange={setSearch} searchPlaceholder="Search machines...">
           <Select value={filterStation} onValueChange={setFilterStation}>
             <SelectTrigger className="w-[150px] h-9"><SelectValue placeholder="Station" /></SelectTrigger>
             <SelectContent>
@@ -247,7 +233,7 @@ const MachinesTab = () => {
               <SelectItem value="faulty">Faulty</SelectItem>
             </SelectContent>
           </Select>
-        </div>
+        </FilterBar>
         <Button onClick={openCreate} size="sm"><Plus className="h-4 w-4 mr-1" />Add Machine</Button>
       </div>
 
@@ -290,9 +276,7 @@ const MachinesTab = () => {
                   </td>
                 </tr>
               ))}
-              {filtered.length === 0 && (
-                <tr><td colSpan={10} className="px-4 py-8 text-center text-muted-foreground">No machines found</td></tr>
-              )}
+              {filtered.length === 0 && <tr><td colSpan={10}><EmptyState title="No machines found" /></td></tr>}
             </tbody>
           </table>
         </div>
@@ -311,14 +295,10 @@ const MachinesTab = () => {
               <div className="grid grid-cols-2 gap-4">
                 <FormField control={form.control} name="station_id" render={({ field }) => (
                   <FormItem><FormLabel>Station</FormLabel><FormControl>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <SelectTrigger><SelectValue placeholder="Select station" /></SelectTrigger>
-                      <SelectContent>
-                        {mockExtendedStations.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-                      </SelectContent>
+                    <Select onValueChange={field.onChange} value={field.value}><SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+                      <SelectContent>{mockExtendedStations.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
                     </Select>
-                  </FormControl><FormMessage /></FormItem>
-                )} />
+                  </FormControl><FormMessage /></FormItem>)} />
                 <FormField control={form.control} name="total_slots" render={({ field }) => (<FormItem><FormLabel>Total Slots</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)} />
               </div>
               <Button type="submit" className="w-full">{editing ? "Update Machine" : "Create Machine"}</Button>
@@ -331,17 +311,16 @@ const MachinesTab = () => {
         <SheetContent>
           <SheetHeader><SheetTitle>{viewing?.name}</SheetTitle></SheetHeader>
           {viewing && (
-            <div className="mt-6 space-y-4 text-sm">
-              <div><span className="text-muted-foreground">ID:</span> <span className="text-foreground ml-2">{viewing.id}</span></div>
-              <div><span className="text-muted-foreground">Model:</span> <span className="text-foreground ml-2">{viewing.model}</span></div>
-              <div><span className="text-muted-foreground">QR Code:</span> <span className="text-foreground ml-2 font-mono">{viewing.qr_code}</span></div>
-              <div><span className="text-muted-foreground">Station:</span> <span className="text-foreground ml-2">{viewing.station}</span></div>
-              <div><span className="text-muted-foreground">Total Slots:</span> <span className="text-foreground ml-2">{viewing.total_slots}</span></div>
-              <div><span className="text-muted-foreground">Available Slots:</span> <span className="text-foreground ml-2">{viewing.available_slots}</span></div>
-              <div><span className="text-muted-foreground">Status:</span> <span className="ml-2"><StatusBadge status={viewing.status} /></span></div>
-              <div><span className="text-muted-foreground">Active:</span> <span className="ml-2"><StatusBadge status={viewing.is_active ? "active" : "inactive"} /></span></div>
-              <div><span className="text-muted-foreground">Last Maintenance:</span> <span className="text-foreground ml-2">{viewing.last_maintenance}</span></div>
-              <div><span className="text-muted-foreground">Created:</span> <span className="text-foreground ml-2">{viewing.created_at}</span></div>
+            <div className="mt-6 space-y-1">
+              <DetailRow label="ID" value={viewing.id} />
+              <DetailRow label="Model" value={viewing.model} />
+              <DetailRow label="QR Code" value={viewing.qr_code} />
+              <DetailRow label="Station" value={viewing.station} />
+              <DetailRow label="Slots" value={`${viewing.available_slots}/${viewing.total_slots}`} />
+              <DetailRow label="Status" value={<StatusBadge status={viewing.status} />} />
+              <DetailRow label="Active" value={<StatusBadge status={viewing.is_active ? "active" : "inactive"} />} />
+              <DetailRow label="Last Maintenance" value={viewing.last_maintenance} />
+              <DetailRow label="Created" value={viewing.created_at} />
             </div>
           )}
         </SheetContent>
@@ -352,7 +331,7 @@ const MachinesTab = () => {
 
 const StationsPage = () => (
   <div className="space-y-6">
-    <h1 className="text-2xl font-bold text-foreground">Stations & Machines</h1>
+    <PageHeader title="Stations & Machines" description="Manage charging stations and machines" />
     <Tabs defaultValue="stations" className="w-full">
       <TabsList className="grid w-full grid-cols-2 max-w-xs">
         <TabsTrigger value="stations"><MapPin className="h-4 w-4 mr-1" />Stations</TabsTrigger>

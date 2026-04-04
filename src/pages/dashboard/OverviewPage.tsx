@@ -1,8 +1,9 @@
-import { Car, Cpu, MapPin, DollarSign, Zap, Users } from "lucide-react";
+import { Car, Cpu, MapPin, DollarSign, Zap } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from "recharts";
 import MetricCard from "@/components/MetricCard";
 import DataTable from "@/components/DataTable";
 import StatusBadge from "@/components/StatusBadge";
+import { PageHeader, SectionCard } from "@/components/shared";
 import { mockRentals, mockMachines, mockTransactions, revenueByMonth, sessionsByStation } from "@/data/mockData";
 
 const OverviewPage = () => {
@@ -12,9 +13,8 @@ const OverviewPage = () => {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-foreground">Dashboard Overview</h1>
+      <PageHeader title="Dashboard Overview" description="Real-time overview of your ChargeByte network" />
 
-      {/* Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard title="Total Revenue" value={totalRevenue.toFixed(2)} prefix="$" change={8.2} icon={<DollarSign className="h-5 w-5" />} />
         <MetricCard title="Active Rentals" value={activeRentals} change={12} icon={<Car className="h-5 w-5" />} />
@@ -22,10 +22,8 @@ const OverviewPage = () => {
         <MetricCard title="Total Sessions" value={mockMachines.reduce((s, m) => s + m.totalSessions, 0)} change={5.4} icon={<Zap className="h-5 w-5" />} />
       </div>
 
-      {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
-          <h3 className="text-sm font-medium text-muted-foreground mb-4">Revenue Trend</h3>
+        <SectionCard title="Revenue Trend">
           <ResponsiveContainer width="100%" height={280}>
             <AreaChart data={revenueByMonth}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
@@ -35,9 +33,8 @@ const OverviewPage = () => {
               <Area type="monotone" dataKey="revenue" stroke="hsl(var(--primary))" fill="hsl(var(--primary) / 0.15)" strokeWidth={2} />
             </AreaChart>
           </ResponsiveContainer>
-        </div>
-        <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
-          <h3 className="text-sm font-medium text-muted-foreground mb-4">Sessions by Station</h3>
+        </SectionCard>
+        <SectionCard title="Sessions by Station">
           <ResponsiveContainer width="100%" height={280}>
             <BarChart data={sessionsByStation}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
@@ -47,10 +44,9 @@ const OverviewPage = () => {
               <Bar dataKey="sessions" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
-        </div>
+        </SectionCard>
       </div>
 
-      {/* Recent Transactions */}
       <div>
         <h3 className="text-lg font-semibold text-foreground mb-3">Recent Transactions</h3>
         <DataTable

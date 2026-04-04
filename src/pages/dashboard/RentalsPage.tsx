@@ -1,10 +1,10 @@
 import { useState, useMemo } from "react";
-import { ArrowUpDown, Search, X, Car, CheckCircle, Clock, XCircle } from "lucide-react";
-import { Input } from "@/components/ui/input";
+import { ArrowUpDown, Car, CheckCircle, Clock, XCircle } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import StatusBadge from "@/components/StatusBadge";
 import MetricCard from "@/components/MetricCard";
+import { PageHeader, FilterBar, DetailRow, EmptyState } from "@/components/shared";
 import { mockExtendedRentals, STATIONS, MACHINES, RENTAL_STATUSES, type ExtendedRental } from "@/data/revenueData";
 
 const RentalsPage = () => {
@@ -68,9 +68,8 @@ const RentalsPage = () => {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-foreground">Rentals Management</h1>
+      <PageHeader title="Rentals Management" description="Track and manage all powerbank rentals" />
 
-      {/* Summary Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <MetricCard title="Active Rentals" value={activeCount} icon={<Car className="h-5 w-5" />} />
         <MetricCard title="Completed" value={completedCount} change={8} icon={<CheckCircle className="h-5 w-5" />} />
@@ -78,46 +77,38 @@ const RentalsPage = () => {
         <MetricCard title="Cancelled" value={cancelledCount} icon={<XCircle className="h-5 w-5" />} />
       </div>
 
-      {/* Filters */}
-      <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-          <div className="relative col-span-2 sm:col-span-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Search..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9 h-9" />
-          </div>
-          <Select value={stationFilter} onValueChange={setStationFilter}>
-            <SelectTrigger className="h-9"><SelectValue placeholder="Station" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Stations</SelectItem>
-              {STATIONS.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={machineFilter} onValueChange={setMachineFilter}>
-            <SelectTrigger className="h-9"><SelectValue placeholder="Machine" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Machines</SelectItem>
-              {MACHINES.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="h-9"><SelectValue placeholder="Status" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Statuses</SelectItem>
-              {RENTAL_STATUSES.map((s) => <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={depositFilter} onValueChange={setDepositFilter}>
-            <SelectTrigger className="h-9"><SelectValue placeholder="Deposit Refund" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All</SelectItem>
-              <SelectItem value="yes">Refunded</SelectItem>
-              <SelectItem value="no">Not Refunded</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
+      <FilterBar searchValue={search} onSearchChange={setSearch} searchPlaceholder="Search by rental code or phone...">
+        <Select value={stationFilter} onValueChange={setStationFilter}>
+          <SelectTrigger className="w-[160px] h-9"><SelectValue placeholder="Station" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Stations</SelectItem>
+            {STATIONS.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={machineFilter} onValueChange={setMachineFilter}>
+          <SelectTrigger className="w-[160px] h-9"><SelectValue placeholder="Machine" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Machines</SelectItem>
+            {MACHINES.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-[140px] h-9"><SelectValue placeholder="Status" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Statuses</SelectItem>
+            {RENTAL_STATUSES.map((s) => <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={depositFilter} onValueChange={setDepositFilter}>
+          <SelectTrigger className="w-[150px] h-9"><SelectValue placeholder="Deposit Refund" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All</SelectItem>
+            <SelectItem value="yes">Refunded</SelectItem>
+            <SelectItem value="no">Not Refunded</SelectItem>
+          </SelectContent>
+        </Select>
+      </FilterBar>
 
-      {/* Rentals Table */}
       <div className="rounded-xl border border-border bg-card shadow-sm overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
@@ -150,20 +141,17 @@ const RentalsPage = () => {
               </tr>
             ))}
             {sorted.length === 0 && (
-              <tr><td colSpan={12} className="px-4 py-8 text-center text-muted-foreground">No rentals found</td></tr>
+              <tr><td colSpan={12}><EmptyState title="No rentals found" description="Try adjusting your filters" /></td></tr>
             )}
           </tbody>
         </table>
       </div>
 
-      {/* Rental Detail Drawer */}
       <Sheet open={!!selectedRental} onOpenChange={() => setSelectedRental(null)}>
         <SheetContent className="sm:max-w-lg overflow-y-auto">
-          <SheetHeader>
-            <SheetTitle>Rental Details</SheetTitle>
-          </SheetHeader>
+          <SheetHeader><SheetTitle>Rental Details</SheetTitle></SheetHeader>
           {selectedRental && (
-            <div className="mt-6 space-y-4">
+            <div className="mt-6 space-y-1">
               <DetailRow label="Rental Code" value={selectedRental.rentalCode} />
               <DetailRow label="Phone Number" value={selectedRental.phoneNumber} />
               <DetailRow label="Station" value={selectedRental.station} />
@@ -175,10 +163,7 @@ const RentalsPage = () => {
               <DetailRow label="Total Amount" value={selectedRental.totalAmount > 0 ? `KES ${selectedRental.totalAmount}` : "—"} />
               <DetailRow label="Deposit" value={`KES ${selectedRental.depositAmount}`} />
               <DetailRow label="Deposit Refunded" value={selectedRental.depositRefunded ? "Yes" : "No"} />
-              <div className="flex items-center justify-between py-2 border-b border-border">
-                <span className="text-sm text-muted-foreground">Status</span>
-                <StatusBadge status={selectedRental.status} />
-              </div>
+              <DetailRow label="Status" value={<StatusBadge status={selectedRental.status} />} />
             </div>
           )}
         </SheetContent>
@@ -186,12 +171,5 @@ const RentalsPage = () => {
     </div>
   );
 };
-
-const DetailRow = ({ label, value }: { label: string; value: string }) => (
-  <div className="flex items-center justify-between py-2 border-b border-border">
-    <span className="text-sm text-muted-foreground">{label}</span>
-    <span className="text-sm font-medium text-foreground">{value}</span>
-  </div>
-);
 
 export default RentalsPage;

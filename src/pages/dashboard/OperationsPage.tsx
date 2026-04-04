@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { PageHeader, FilterBar, EmptyState } from "@/components/shared";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -306,7 +307,7 @@ const DailyPlansTab = () => {
 
 const OperationsPage = () => (
   <div className="space-y-6">
-    <h1 className="text-2xl font-bold text-foreground">Staff Operations</h1>
+    <PageHeader title="Staff Operations" description="Manage leads, reports, and daily tasks" />
     <Tabs defaultValue="leads" className="w-full">
       <TabsList className="grid w-full grid-cols-4 max-w-lg">
         <TabsTrigger value="leads"><Users className="h-4 w-4 mr-1 hidden sm:inline" />Leads</TabsTrigger>

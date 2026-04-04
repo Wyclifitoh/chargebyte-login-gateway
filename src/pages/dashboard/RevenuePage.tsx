@@ -1,10 +1,10 @@
 import { useState, useMemo } from "react";
-import { DollarSign, ArrowUpDown, Search, TrendingUp, Receipt, RefreshCw, Activity } from "lucide-react";
-import { BarChart, Bar, AreaChart, Area, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
-import { Input } from "@/components/ui/input";
+import { DollarSign, ArrowUpDown, TrendingUp, Receipt, RefreshCw, Activity } from "lucide-react";
+import { BarChart, Bar, AreaChart, Area, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import MetricCard from "@/components/MetricCard";
 import StatusBadge from "@/components/StatusBadge";
+import { PageHeader, SectionCard, FilterBar, EmptyState } from "@/components/shared";
 import {
   mockRevenueTransactions,
   revenueOverTime,
@@ -57,8 +57,6 @@ const RevenuePage = () => {
   const rentalCharges = completedTx.filter((t) => t.transactionType === "rental_charge").reduce((s, t) => s + t.amount, 0);
   const deposits = completedTx.filter((t) => t.transactionType === "deposit").reduce((s, t) => s + t.amount, 0);
   const refunds = completedTx.filter((t) => t.transactionType === "refund").reduce((s, t) => s + t.amount, 0);
-  const activeRentals = 2;
-  const completedRentals = 5;
 
   const typeLabel = (t: string) => t.replace("_", " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
@@ -76,22 +74,19 @@ const RevenuePage = () => {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-foreground">Revenue Visibility</h1>
+      <PageHeader title="Revenue Visibility" description="Track all revenue streams across stations and machines" />
 
-      {/* Summary Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
         <MetricCard title="Total Revenue" value={totalRevenue.toLocaleString()} prefix="KES " change={12.5} icon={<DollarSign className="h-5 w-5" />} />
         <MetricCard title="Rental Charges" value={rentalCharges.toLocaleString()} prefix="KES " icon={<Receipt className="h-5 w-5" />} />
         <MetricCard title="Deposits" value={deposits.toLocaleString()} prefix="KES " icon={<DollarSign className="h-5 w-5" />} />
         <MetricCard title="Refunds" value={refunds.toLocaleString()} prefix="KES " icon={<RefreshCw className="h-5 w-5" />} />
-        <MetricCard title="Active Rentals" value={activeRentals} icon={<Activity className="h-5 w-5" />} />
-        <MetricCard title="Completed" value={completedRentals} change={8} icon={<TrendingUp className="h-5 w-5" />} />
+        <MetricCard title="Active Rentals" value={2} icon={<Activity className="h-5 w-5" />} />
+        <MetricCard title="Completed" value={5} change={8} icon={<TrendingUp className="h-5 w-5" />} />
       </div>
 
-      {/* Charts Row 1 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
-          <h3 className="text-sm font-medium text-muted-foreground mb-4">Revenue Over Time</h3>
+        <SectionCard title="Revenue Over Time">
           <ResponsiveContainer width="100%" height={260}>
             <AreaChart data={revenueOverTime}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
@@ -101,9 +96,8 @@ const RevenuePage = () => {
               <Area type="monotone" dataKey="revenue" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.15} strokeWidth={2} />
             </AreaChart>
           </ResponsiveContainer>
-        </div>
-        <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
-          <h3 className="text-sm font-medium text-muted-foreground mb-4">Revenue by Station</h3>
+        </SectionCard>
+        <SectionCard title="Revenue by Station">
           <ResponsiveContainer width="100%" height={260}>
             <BarChart data={revenueByStation}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
@@ -113,13 +107,11 @@ const RevenuePage = () => {
               <Bar dataKey="revenue" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
-        </div>
+        </SectionCard>
       </div>
 
-      {/* Charts Row 2 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
-          <h3 className="text-sm font-medium text-muted-foreground mb-4">Revenue by Machine</h3>
+        <SectionCard title="Revenue by Machine">
           <ResponsiveContainer width="100%" height={260}>
             <BarChart data={revenueByMachine} layout="vertical">
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
@@ -129,9 +121,8 @@ const RevenuePage = () => {
               <Bar dataKey="revenue" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
             </BarChart>
           </ResponsiveContainer>
-        </div>
-        <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
-          <h3 className="text-sm font-medium text-muted-foreground mb-4">Transaction Type Breakdown</h3>
+        </SectionCard>
+        <SectionCard title="Transaction Type Breakdown">
           <ResponsiveContainer width="100%" height={260}>
             <PieChart>
               <Pie data={transactionTypeBreakdown} dataKey="value" nameKey="type" cx="50%" cy="50%" outerRadius={90} label={({ type, percent }) => `${type} ${(percent * 100).toFixed(0)}%`}>
@@ -142,50 +133,42 @@ const RevenuePage = () => {
               <Tooltip contentStyle={{ borderRadius: "8px", border: "1px solid hsl(var(--border))", background: "hsl(var(--card))" }} />
             </PieChart>
           </ResponsiveContainer>
-        </div>
+        </SectionCard>
       </div>
 
-      {/* Filters */}
-      <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-          <div className="relative col-span-2 sm:col-span-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Search..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9 h-9" />
-          </div>
-          <Select value={stationFilter} onValueChange={setStationFilter}>
-            <SelectTrigger className="h-9"><SelectValue placeholder="Station" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Stations</SelectItem>
-              {STATIONS.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={machineFilter} onValueChange={setMachineFilter}>
-            <SelectTrigger className="h-9"><SelectValue placeholder="Machine" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Machines</SelectItem>
-              {MACHINES.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={typeFilter} onValueChange={setTypeFilter}>
-            <SelectTrigger className="h-9"><SelectValue placeholder="Type" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Types</SelectItem>
-              {TRANSACTION_TYPES.map((t) => <SelectItem key={t} value={t}>{typeLabel(t)}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="h-9"><SelectValue placeholder="Status" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Statuses</SelectItem>
-              <SelectItem value="completed">Completed</SelectItem>
-              <SelectItem value="pending">Pending</SelectItem>
-              <SelectItem value="failed">Failed</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
+      <FilterBar searchValue={search} onSearchChange={setSearch} searchPlaceholder="Search by code, phone, or receipt...">
+        <Select value={stationFilter} onValueChange={setStationFilter}>
+          <SelectTrigger className="w-[160px] h-9"><SelectValue placeholder="Station" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Stations</SelectItem>
+            {STATIONS.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={machineFilter} onValueChange={setMachineFilter}>
+          <SelectTrigger className="w-[160px] h-9"><SelectValue placeholder="Machine" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Machines</SelectItem>
+            {MACHINES.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={typeFilter} onValueChange={setTypeFilter}>
+          <SelectTrigger className="w-[160px] h-9"><SelectValue placeholder="Type" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Types</SelectItem>
+            {TRANSACTION_TYPES.map((t) => <SelectItem key={t} value={t}>{typeLabel(t)}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-[140px] h-9"><SelectValue placeholder="Status" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Statuses</SelectItem>
+            <SelectItem value="completed">Completed</SelectItem>
+            <SelectItem value="pending">Pending</SelectItem>
+            <SelectItem value="failed">Failed</SelectItem>
+          </SelectContent>
+        </Select>
+      </FilterBar>
 
-      {/* Revenue Table */}
       <div className="rounded-xl border border-border bg-card shadow-sm overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
@@ -215,7 +198,7 @@ const RevenuePage = () => {
               </tr>
             ))}
             {sorted.length === 0 && (
-              <tr><td colSpan={9} className="px-4 py-8 text-center text-muted-foreground">No transactions found</td></tr>
+              <tr><td colSpan={9}><EmptyState title="No transactions found" description="Try adjusting your filters" /></td></tr>
             )}
           </tbody>
         </table>

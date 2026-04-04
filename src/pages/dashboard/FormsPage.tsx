@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { PageHeader } from "@/components/shared";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -213,7 +213,7 @@ const ActivityForm = () => {
 
 const FormsPage = () => (
   <div className="space-y-6">
-    <h1 className="text-2xl font-bold text-foreground">Forms & Actions</h1>
+    <PageHeader title="Forms & Actions" description="Add leads, submit reports, and plan activities" />
     <Tabs defaultValue="leads" className="w-full">
       <TabsList className="grid w-full grid-cols-3 max-w-md">
         <TabsTrigger value="leads">Add Lead</TabsTrigger>
