@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import StatusBadge from "@/components/StatusBadge";
+import { PageHeader, FilterBar, DetailRow, EmptyState } from "@/components/shared";
 import { mockAuditLogs, AuditLog } from "@/data/extendedMockData";
-import { Search, Eye } from "lucide-react";
+import { Eye } from "lucide-react";
 
 const AuditLogsPage = () => {
   const [search, setSearch] = useState("");
@@ -35,13 +35,9 @@ const AuditLogsPage = () => {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-foreground">Audit Logs</h1>
+      <PageHeader title="Audit Logs" description="Track all system changes and user actions" />
 
-      <div className="flex flex-col sm:flex-row gap-3 flex-wrap">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Search by user or record..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9 h-9" />
-        </div>
+      <FilterBar searchValue={search} onSearchChange={setSearch} searchPlaceholder="Search by user or record...">
         <Select value={filterAction} onValueChange={setFilterAction}>
           <SelectTrigger className="w-[130px] h-9"><SelectValue placeholder="Action" /></SelectTrigger>
           <SelectContent>
@@ -56,7 +52,7 @@ const AuditLogsPage = () => {
             {tables.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
           </SelectContent>
         </Select>
-      </div>
+      </FilterBar>
 
       <Card>
         <div className="overflow-x-auto">
@@ -88,7 +84,7 @@ const AuditLogsPage = () => {
                   </td>
                 </tr>
               ))}
-              {filtered.length === 0 && <tr><td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">No logs found</td></tr>}
+              {filtered.length === 0 && <tr><td colSpan={8}><EmptyState title="No logs found" /></td></tr>}
             </tbody>
           </table>
         </div>
@@ -98,24 +94,24 @@ const AuditLogsPage = () => {
         <SheetContent className="sm:max-w-lg">
           <SheetHeader><SheetTitle>Audit Log Details</SheetTitle></SheetHeader>
           {viewing && (
-            <div className="mt-6 space-y-4 text-sm">
-              <div><span className="text-muted-foreground">Date:</span> <span className="text-foreground ml-2">{viewing.date}</span></div>
-              <div><span className="text-muted-foreground">User:</span> <span className="text-foreground ml-2">{viewing.user_name} ({viewing.user_id})</span></div>
-              <div><span className="text-muted-foreground">Action:</span> <span className="ml-2"><StatusBadge status={actionColor(viewing.action)} /></span></div>
-              <div><span className="text-muted-foreground">Table:</span> <span className="text-foreground ml-2 font-mono">{viewing.table_name}</span></div>
-              <div><span className="text-muted-foreground">Record:</span> <span className="text-foreground ml-2 font-mono">{viewing.record_id}</span></div>
-              <div><span className="text-muted-foreground">IP:</span> <span className="text-foreground ml-2 font-mono">{viewing.ip_address}</span></div>
-              <div><span className="text-muted-foreground">User Agent:</span> <span className="text-foreground ml-2 text-xs">{viewing.user_agent}</span></div>
+            <div className="mt-6 space-y-1">
+              <DetailRow label="Date" value={viewing.date} />
+              <DetailRow label="User" value={`${viewing.user_name} (${viewing.user_id})`} />
+              <DetailRow label="Action" value={<StatusBadge status={actionColor(viewing.action)} />} />
+              <DetailRow label="Table" value={viewing.table_name} />
+              <DetailRow label="Record" value={viewing.record_id} />
+              <DetailRow label="IP" value={viewing.ip_address} />
+              <DetailRow label="User Agent" value={viewing.user_agent} />
               {viewing.old_values && (
                 <div className="pt-2">
-                  <p className="text-muted-foreground font-medium mb-2">Old Values</p>
-                  <pre className="bg-red-50 dark:bg-red-900/20 rounded-lg p-3 text-xs text-foreground overflow-auto max-h-[200px]">{JSON.stringify(viewing.old_values, null, 2)}</pre>
+                  <p className="text-muted-foreground font-medium mb-2 text-sm">Old Values</p>
+                  <pre className="bg-destructive/5 border border-destructive/10 rounded-lg p-3 text-xs text-foreground overflow-auto max-h-[200px]">{JSON.stringify(viewing.old_values, null, 2)}</pre>
                 </div>
               )}
               {viewing.new_values && (
                 <div className="pt-2">
-                  <p className="text-muted-foreground font-medium mb-2">New Values</p>
-                  <pre className="bg-green-50 dark:bg-green-900/20 rounded-lg p-3 text-xs text-foreground overflow-auto max-h-[200px]">{JSON.stringify(viewing.new_values, null, 2)}</pre>
+                  <p className="text-muted-foreground font-medium mb-2 text-sm">New Values</p>
+                  <pre className="bg-primary/5 border border-primary/10 rounded-lg p-3 text-xs text-foreground overflow-auto max-h-[200px]">{JSON.stringify(viewing.new_values, null, 2)}</pre>
                 </div>
               )}
             </div>

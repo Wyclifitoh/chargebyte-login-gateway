@@ -5,6 +5,7 @@ import { mockCampaigns, mockStations } from "@/data/mockData";
 import MetricCard from "@/components/MetricCard";
 import StatusBadge from "@/components/StatusBadge";
 import DataTable from "@/components/DataTable";
+import { PageHeader, FilterBar } from "@/components/shared";
 import { Megaphone, Eye, MousePointerClick, DollarSign } from "lucide-react";
 
 const CampaignsPage = () => {
@@ -21,7 +22,6 @@ const CampaignsPage = () => {
   const totalImpressions = filtered.reduce((s, c) => s + c.impressions, 0);
   const totalInteractions = filtered.reduce((s, c) => s + c.interactions, 0);
   const totalSpend = filtered.reduce((s, c) => s + c.spend, 0);
-  const avgCtr = filtered.length ? (filtered.reduce((s, c) => s + c.ctr, 0) / filtered.length).toFixed(1) : "0";
 
   const columns = [
     { key: "name" as const, label: "Campaign" },
@@ -37,7 +37,7 @@ const CampaignsPage = () => {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-foreground">Campaigns</h1>
+      <PageHeader title="Campaigns" description="Manage and track advertising campaigns" />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard title="Total Campaigns" value={filtered.length} icon={<Megaphone className="h-5 w-5" />} />
@@ -46,33 +46,31 @@ const CampaignsPage = () => {
         <MetricCard title="Total Spend" value={`$${totalSpend.toLocaleString()}`} icon={<DollarSign className="h-5 w-5" />} />
       </div>
 
-      <Card className="border-border">
-        <CardContent className="pt-4 pb-4 flex flex-wrap gap-4 items-end">
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-muted-foreground">Status</label>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Statuses</SelectItem>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="completed">Completed</SelectItem>
-                <SelectItem value="scheduled">Scheduled</SelectItem>
-                <SelectItem value="paused">Paused</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-muted-foreground">Location</label>
-            <Select value={locationFilter} onValueChange={setLocationFilter}>
-              <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Locations</SelectItem>
-                {mockStations.map((s) => <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
+      <FilterBar>
+        <div className="space-y-1">
+          <label className="text-xs font-medium text-muted-foreground">Status</label>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-[180px] h-9"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Statuses</SelectItem>
+              <SelectItem value="active">Active</SelectItem>
+              <SelectItem value="completed">Completed</SelectItem>
+              <SelectItem value="scheduled">Scheduled</SelectItem>
+              <SelectItem value="paused">Paused</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
+          <label className="text-xs font-medium text-muted-foreground">Location</label>
+          <Select value={locationFilter} onValueChange={setLocationFilter}>
+            <SelectTrigger className="w-[180px] h-9"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Locations</SelectItem>
+              {mockStations.map((s) => <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+      </FilterBar>
 
       <DataTable data={filtered} columns={columns} searchKey="name" searchPlaceholder="Search campaigns..." />
     </div>

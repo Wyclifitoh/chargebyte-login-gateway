@@ -2,12 +2,12 @@ import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import StatusBadge from "@/components/StatusBadge";
+import { PageHeader, FilterBar, DetailRow, EmptyState } from "@/components/shared";
 import { mockMpesaTransactions, mockMpesaCallbacks, MpesaTransaction, MpesaCallback } from "@/data/extendedMockData";
-import { Search, Eye, CreditCard, ArrowLeftRight } from "lucide-react";
+import { Eye, CreditCard, ArrowLeftRight } from "lucide-react";
 
 const TransactionsTab = () => {
   const [search, setSearch] = useState("");
@@ -24,11 +24,7 @@ const TransactionsTab = () => {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row gap-3 flex-wrap">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Search by phone or receipt..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9 h-9" />
-        </div>
+      <FilterBar searchValue={search} onSearchChange={setSearch} searchPlaceholder="Search by phone or receipt...">
         <Select value={filterType} onValueChange={setFilterType}>
           <SelectTrigger className="w-[160px] h-9"><SelectValue placeholder="Type" /></SelectTrigger>
           <SelectContent>
@@ -48,7 +44,7 @@ const TransactionsTab = () => {
             <SelectItem value="failed">Failed</SelectItem>
           </SelectContent>
         </Select>
-      </div>
+      </FilterBar>
 
       <Card>
         <div className="overflow-x-auto">
@@ -84,7 +80,7 @@ const TransactionsTab = () => {
                   </td>
                 </tr>
               ))}
-              {filtered.length === 0 && <tr><td colSpan={10} className="px-4 py-8 text-center text-muted-foreground">No transactions found</td></tr>}
+              {filtered.length === 0 && <tr><td colSpan={10}><EmptyState title="No transactions found" /></td></tr>}
             </tbody>
           </table>
         </div>
@@ -94,16 +90,16 @@ const TransactionsTab = () => {
         <SheetContent>
           <SheetHeader><SheetTitle>Transaction Details</SheetTitle></SheetHeader>
           {viewing && (
-            <div className="mt-6 space-y-4 text-sm">
-              <div><span className="text-muted-foreground">ID:</span> <span className="text-foreground ml-2">{viewing.id}</span></div>
-              <div><span className="text-muted-foreground">Date:</span> <span className="text-foreground ml-2">{viewing.date}</span></div>
-              <div><span className="text-muted-foreground">Type:</span> <span className="text-foreground ml-2 capitalize">{viewing.transaction_type.replace("_", " ")}</span></div>
-              <div><span className="text-muted-foreground">Amount:</span> <span className="text-foreground ml-2">{viewing.currency} {viewing.amount.toLocaleString()}</span></div>
-              <div><span className="text-muted-foreground">M-Pesa Receipt:</span> <span className="text-foreground ml-2 font-mono">{viewing.mpesa_receipt || "N/A"}</span></div>
-              <div><span className="text-muted-foreground">Phone:</span> <span className="text-foreground ml-2">{viewing.phone_number}</span></div>
-              <div><span className="text-muted-foreground">Checkout ID:</span> <span className="text-foreground ml-2 font-mono text-xs break-all">{viewing.checkout_request_id}</span></div>
-              <div><span className="text-muted-foreground">Rental ID:</span> <span className="text-foreground ml-2">{viewing.rental_id}</span></div>
-              <div><span className="text-muted-foreground">Status:</span> <span className="ml-2"><StatusBadge status={viewing.status} /></span></div>
+            <div className="mt-6 space-y-1">
+              <DetailRow label="ID" value={viewing.id} />
+              <DetailRow label="Date" value={viewing.date} />
+              <DetailRow label="Type" value={<span className="capitalize">{viewing.transaction_type.replace("_", " ")}</span>} />
+              <DetailRow label="Amount" value={`${viewing.currency} ${viewing.amount.toLocaleString()}`} />
+              <DetailRow label="M-Pesa Receipt" value={viewing.mpesa_receipt || "N/A"} />
+              <DetailRow label="Phone" value={viewing.phone_number} />
+              <DetailRow label="Checkout ID" value={viewing.checkout_request_id} />
+              <DetailRow label="Rental ID" value={viewing.rental_id} />
+              <DetailRow label="Status" value={<StatusBadge status={viewing.status} />} />
             </div>
           )}
         </SheetContent>
@@ -125,11 +121,7 @@ const CallbacksTab = () => {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Search callbacks..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9 h-9" />
-        </div>
+      <FilterBar searchValue={search} onSearchChange={setSearch} searchPlaceholder="Search callbacks...">
         <Select value={filterProcessed} onValueChange={setFilterProcessed}>
           <SelectTrigger className="w-[150px] h-9"><SelectValue placeholder="Processed" /></SelectTrigger>
           <SelectContent>
@@ -138,7 +130,7 @@ const CallbacksTab = () => {
             <SelectItem value="no">Unprocessed</SelectItem>
           </SelectContent>
         </Select>
-      </div>
+      </FilterBar>
 
       <Card>
         <div className="overflow-x-auto">
@@ -172,7 +164,7 @@ const CallbacksTab = () => {
                   </td>
                 </tr>
               ))}
-              {filtered.length === 0 && <tr><td colSpan={9} className="px-4 py-8 text-center text-muted-foreground">No callbacks found</td></tr>}
+              {filtered.length === 0 && <tr><td colSpan={9}><EmptyState title="No callbacks found" /></td></tr>}
             </tbody>
           </table>
         </div>
@@ -182,18 +174,18 @@ const CallbacksTab = () => {
         <SheetContent className="sm:max-w-lg">
           <SheetHeader><SheetTitle>Callback Details</SheetTitle></SheetHeader>
           {viewing && (
-            <div className="mt-6 space-y-4 text-sm">
-              <div><span className="text-muted-foreground">Date:</span> <span className="text-foreground ml-2">{viewing.date}</span></div>
-              <div><span className="text-muted-foreground">Merchant Req ID:</span> <span className="text-foreground ml-2 font-mono">{viewing.merchant_request_id}</span></div>
-              <div><span className="text-muted-foreground">Checkout Req ID:</span> <span className="text-foreground ml-2 font-mono text-xs break-all">{viewing.checkout_request_id}</span></div>
-              <div><span className="text-muted-foreground">Amount:</span> <span className="text-foreground ml-2">KES {viewing.amount.toLocaleString()}</span></div>
-              <div><span className="text-muted-foreground">Receipt:</span> <span className="text-foreground ml-2 font-mono">{viewing.mpesa_receipt_number || "N/A"}</span></div>
-              <div><span className="text-muted-foreground">Phone:</span> <span className="text-foreground ml-2">{viewing.phone_number}</span></div>
-              <div><span className="text-muted-foreground">Result Code:</span> <span className="text-foreground ml-2">{viewing.result_code}</span></div>
-              <div><span className="text-muted-foreground">Result Desc:</span> <span className="text-foreground ml-2">{viewing.result_desc}</span></div>
-              <div><span className="text-muted-foreground">Processed:</span> <span className="ml-2"><StatusBadge status={viewing.processed ? "active" : "pending"} /></span></div>
+            <div className="mt-6 space-y-1">
+              <DetailRow label="Date" value={viewing.date} />
+              <DetailRow label="Merchant Req ID" value={viewing.merchant_request_id} />
+              <DetailRow label="Checkout Req ID" value={viewing.checkout_request_id} />
+              <DetailRow label="Amount" value={`KES ${viewing.amount.toLocaleString()}`} />
+              <DetailRow label="Receipt" value={viewing.mpesa_receipt_number || "N/A"} />
+              <DetailRow label="Phone" value={viewing.phone_number} />
+              <DetailRow label="Result Code" value={String(viewing.result_code)} />
+              <DetailRow label="Result Desc" value={viewing.result_desc} />
+              <DetailRow label="Processed" value={<StatusBadge status={viewing.processed ? "active" : "pending"} />} />
               <div className="pt-4">
-                <p className="text-muted-foreground font-medium mb-2">Callback Data (JSON)</p>
+                <p className="text-muted-foreground font-medium mb-2 text-sm">Callback Data (JSON)</p>
                 <pre className="bg-muted rounded-lg p-3 text-xs text-foreground overflow-auto max-h-[300px]">{JSON.stringify(viewing.callback_data, null, 2)}</pre>
               </div>
             </div>
@@ -206,7 +198,7 @@ const CallbacksTab = () => {
 
 const TransactionsPage = () => (
   <div className="space-y-6">
-    <h1 className="text-2xl font-bold text-foreground">M-Pesa Transactions</h1>
+    <PageHeader title="M-Pesa Transactions" description="Monitor all M-Pesa transactions and callbacks" />
     <Tabs defaultValue="transactions" className="w-full">
       <TabsList className="grid w-full grid-cols-2 max-w-xs">
         <TabsTrigger value="transactions"><CreditCard className="h-4 w-4 mr-1" />Transactions</TabsTrigger>

@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import StatusBadge from "@/components/StatusBadge";
+import { PageHeader, FilterBar, EmptyState } from "@/components/shared";
 import { mockNotifications, Notification } from "@/data/extendedMockData";
 import { useAuth } from "@/contexts/AuthContext";
-import { Search, Bell, Check, X, AlertTriangle, Info, AlertCircle } from "lucide-react";
+import { Bell, Check, X, AlertTriangle, Info, AlertCircle } from "lucide-react";
 
 const severityIcon = (s: string) => {
   switch (s) {
@@ -34,31 +34,21 @@ const NotificationsPage = () => {
   });
 
   const types = [...new Set(roleFiltered.map((n) => n.type))];
-
   const markRead = (id: string) => setNotifications((prev) => prev.map((n) => n.id === id ? { ...n, read: true } : n));
   const markUnread = (id: string) => setNotifications((prev) => prev.map((n) => n.id === id ? { ...n, read: false } : n));
   const dismiss = (id: string) => setNotifications((prev) => prev.filter((n) => n.id !== id));
   const markAllRead = () => setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-
   const unreadCount = roleFiltered.filter((n) => !n.read).length;
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-bold text-foreground">Notifications</h1>
-          {unreadCount > 0 && (
-            <span className="bg-destructive text-destructive-foreground text-xs font-bold px-2 py-0.5 rounded-full">{unreadCount}</span>
-          )}
-        </div>
-        <Button variant="outline" size="sm" onClick={markAllRead}>Mark all read</Button>
-      </div>
+      <PageHeader
+        title="Notifications"
+        badge={unreadCount > 0 ? <span className="bg-destructive text-destructive-foreground text-xs font-bold px-2 py-0.5 rounded-full">{unreadCount}</span> : undefined}
+        actions={<Button variant="outline" size="sm" onClick={markAllRead}>Mark all read</Button>}
+      />
 
-      <div className="flex flex-col sm:flex-row gap-3 flex-wrap">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Search notifications..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9 h-9" />
-        </div>
+      <FilterBar searchValue={search} onSearchChange={setSearch} searchPlaceholder="Search notifications...">
         <Select value={filterType} onValueChange={setFilterType}>
           <SelectTrigger className="w-[180px] h-9"><SelectValue placeholder="Type" /></SelectTrigger>
           <SelectContent>
@@ -83,7 +73,7 @@ const NotificationsPage = () => {
             <SelectItem value="read">Read</SelectItem>
           </SelectContent>
         </Select>
-      </div>
+      </FilterBar>
 
       <div className="space-y-3">
         {filtered.map((n) => (
@@ -113,7 +103,9 @@ const NotificationsPage = () => {
           </Card>
         ))}
         {filtered.length === 0 && (
-          <Card><CardContent className="py-8 text-center text-muted-foreground">No notifications</CardContent></Card>
+          <Card>
+            <EmptyState title="No notifications" description="You're all caught up!" />
+          </Card>
         )}
       </div>
     </div>
