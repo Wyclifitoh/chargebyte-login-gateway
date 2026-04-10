@@ -18,10 +18,9 @@ exports.login = async (req, res, next) => {
     const { email, password } = req.body;
 
     const [users] = await db.query(
-      `SELECT u.id, u.name, u.email, u.password_hash, u.is_active, ur.role 
-       FROM users u 
-       JOIN user_roles ur ON u.id = ur.user_id 
-       WHERE u.email = ?`,
+      `SELECT id, email, password_hash, full_name, phone, role, partner_id, partner_type, 
+              is_active, is_verified, permissions, preferences 
+       FROM system_users WHERE email = ?`,
       [email]
     );
 
@@ -30,14 +29,31 @@ exports.login = async (req, res, next) => {
     }
 
     const user = users[0];
+
     if (!user.is_active) {
       return res.status(403).json({ success: false, error: 'Account is deactivated' });
     }
 
+    // Check lock
+    if (user.lock_until && new Date(user.lock_until) > new Date()) {
+      return res.status(423).json({ success: false, error: 'Account is temporarily locked. Try again later.' });
+    }
+
     const isMatch = await bcrypt.compare(password, user.password_hash);
     if (!isMatch) {
+      // Increment login attempts
+      await db.query(
+        'UPDATE system_users SET login_attempts = login_attempts + 1, lock_until = IF(login_attempts >= 4, DATE_ADD(NOW(), INTERVAL 15 MINUTE), NULL) WHERE id = ?',
+        [user.id]
+      );
       return res.status(401).json({ success: false, error: 'Invalid email or password' });
     }
+
+    // Reset login attempts and update last login
+    await db.query(
+      'UPDATE system_users SET login_attempts = 0, lock_until = NULL, last_login = NOW() WHERE id = ?',
+      [user.id]
+    );
 
     const { accessToken, refreshToken } = generateTokens(user.id);
 
@@ -48,19 +64,31 @@ exports.login = async (req, res, next) => {
       [uuidv4(), user.id, refreshToken, expiresAt]
     );
 
-    // Update last login
-    await db.query('UPDATE users SET last_login = NOW() WHERE id = ?', [user.id]);
-
     // Audit log
     await db.query(
-      'INSERT INTO audit_logs (id, user_id, action, table_name, ip_address, user_agent) VALUES (?, ?, ?, ?, ?, ?)',
-      [uuidv4(), user.id, 'LOGIN', 'users', req.ip, req.get('User-Agent') || '']
+      'INSERT INTO audit_logs (user_id, action, table_name, ip_address, user_agent) VALUES (?, ?, ?, ?, ?)',
+      [user.id, 'LOGIN', 'system_users', req.ip, req.get('User-Agent') || '']
     );
+
+    let permissions = [];
+    let preferences = {};
+    try { permissions = typeof user.permissions === 'string' ? JSON.parse(user.permissions) : user.permissions || []; } catch(e) { permissions = []; }
+    try { preferences = typeof user.preferences === 'string' ? JSON.parse(user.preferences) : user.preferences || {}; } catch(e) { preferences = {}; }
 
     res.json({
       success: true,
       data: {
-        user: { id: user.id, name: user.name, email: user.email, role: user.role },
+        user: {
+          id: user.id,
+          name: user.full_name,
+          email: user.email,
+          role: user.role,
+          phone: user.phone,
+          partner_id: user.partner_id,
+          partner_type: user.partner_type,
+          permissions,
+          preferences
+        },
         accessToken,
         refreshToken
       }
@@ -73,7 +101,6 @@ exports.login = async (req, res, next) => {
 exports.refreshToken = async (req, res, next) => {
   try {
     const { refreshToken } = req.body;
-
     const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
 
     const [tokens] = await db.query(
@@ -85,12 +112,9 @@ exports.refreshToken = async (req, res, next) => {
       return res.status(401).json({ success: false, error: 'Invalid or expired refresh token' });
     }
 
-    // Delete old token
     await db.query('DELETE FROM refresh_tokens WHERE token = ?', [refreshToken]);
 
-    // Generate new tokens
     const newTokens = generateTokens(decoded.userId);
-
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
     await db.query(
       'INSERT INTO refresh_tokens (id, user_id, token, expires_at) VALUES (?, ?, ?, ?)',
