@@ -38,7 +38,7 @@ sudo mysql -u root -p
 
 ```sql
 CREATE DATABASE chargebyte_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-CREATE USER 'chargebyte_user'@'localhost' IDENTIFIED BY 'YOUR_STRONG_PASSWORD';
+CREATE USER 'chargebyte_user'@'localhost' IDENTIFIED BY 'ChargeByteDB2026';
 GRANT ALL PRIVILEGES ON chargebyte_db.* TO 'chargebyte_user'@'localhost';
 FLUSH PRIVILEGES;
 EXIT;
@@ -150,6 +150,7 @@ sudo ufw enable
 ## 8. Connect Frontend
 
 Update your frontend `.env` or API config to point to:
+
 ```
 https://api.yourdomain.com/api
 ```
@@ -159,95 +160,106 @@ https://api.yourdomain.com/api
 ## API Endpoints Reference
 
 ### Auth
-| Method | Endpoint | Description | Auth |
-|--------|----------|-------------|------|
-| POST | `/api/auth/login` | Login | No |
-| POST | `/api/auth/refresh` | Refresh token | No |
-| POST | `/api/auth/logout` | Logout | Yes |
-| GET | `/api/auth/me` | Get current user | Yes |
+
+| Method | Endpoint            | Description      | Auth |
+| ------ | ------------------- | ---------------- | ---- |
+| POST   | `/api/auth/login`   | Login            | No   |
+| POST   | `/api/auth/refresh` | Refresh token    | No   |
+| POST   | `/api/auth/logout`  | Logout           | Yes  |
+| GET    | `/api/auth/me`      | Get current user | Yes  |
 
 ### Users (super_admin only for write)
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/users` | List all users |
-| GET | `/api/users/:id` | Get user by ID |
-| POST | `/api/users` | Create user |
-| PUT | `/api/users/:id` | Update user |
-| DELETE | `/api/users/:id` | Delete user |
+
+| Method | Endpoint         | Description    |
+| ------ | ---------------- | -------------- |
+| GET    | `/api/users`     | List all users |
+| GET    | `/api/users/:id` | Get user by ID |
+| POST   | `/api/users`     | Create user    |
+| PUT    | `/api/users/:id` | Update user    |
+| DELETE | `/api/users/:id` | Delete user    |
 
 ### Stations
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/stations` | List stations |
-| GET | `/api/stations/:id` | Get station |
-| POST | `/api/stations` | Create station |
-| PUT | `/api/stations/:id` | Update station |
-| PATCH | `/api/stations/:id/toggle` | Toggle active |
+
+| Method | Endpoint                   | Description    |
+| ------ | -------------------------- | -------------- |
+| GET    | `/api/stations`            | List stations  |
+| GET    | `/api/stations/:id`        | Get station    |
+| POST   | `/api/stations`            | Create station |
+| PUT    | `/api/stations/:id`        | Update station |
+| PATCH  | `/api/stations/:id/toggle` | Toggle active  |
 
 ### Machines
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/machines` | List machines |
-| GET | `/api/machines/:id` | Get machine |
-| POST | `/api/machines` | Create machine |
-| PUT | `/api/machines/:id` | Update machine |
-| PATCH | `/api/machines/:id/status` | Set status |
+
+| Method | Endpoint                   | Description    |
+| ------ | -------------------------- | -------------- |
+| GET    | `/api/machines`            | List machines  |
+| GET    | `/api/machines/:id`        | Get machine    |
+| POST   | `/api/machines`            | Create machine |
+| PUT    | `/api/machines/:id`        | Update machine |
+| PATCH  | `/api/machines/:id/status` | Set status     |
 
 ### Rentals
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/rentals` | List rentals |
-| GET | `/api/rentals/:id` | Get rental |
-| PATCH | `/api/rentals/:id/cancel` | Cancel rental |
+
+| Method | Endpoint                  | Description   |
+| ------ | ------------------------- | ------------- |
+| GET    | `/api/rentals`            | List rentals  |
+| GET    | `/api/rentals/:id`        | Get rental    |
+| PATCH  | `/api/rentals/:id/cancel` | Cancel rental |
 
 ### Transactions (admin+)
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/transactions` | List transactions |
-| GET | `/api/transactions/callbacks` | M-Pesa callbacks |
-| GET | `/api/transactions/:id` | Get transaction |
+
+| Method | Endpoint                      | Description       |
+| ------ | ----------------------------- | ----------------- |
+| GET    | `/api/transactions`           | List transactions |
+| GET    | `/api/transactions/callbacks` | M-Pesa callbacks  |
+| GET    | `/api/transactions/:id`       | Get transaction   |
 
 ### Revenue
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/revenue/summary` | Revenue summary |
-| GET | `/api/revenue/by-station` | Revenue by station |
-| GET | `/api/revenue/by-machine` | Revenue by machine |
-| GET | `/api/revenue/over-time` | Revenue over time |
+
+| Method | Endpoint                  | Description        |
+| ------ | ------------------------- | ------------------ |
+| GET    | `/api/revenue/summary`    | Revenue summary    |
+| GET    | `/api/revenue/by-station` | Revenue by station |
+| GET    | `/api/revenue/by-machine` | Revenue by machine |
+| GET    | `/api/revenue/over-time`  | Revenue over time  |
 
 ### Campaigns
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/campaigns` | List campaigns |
-| GET | `/api/campaigns/:id` | Get campaign |
-| POST | `/api/campaigns` | Create campaign |
-| PUT | `/api/campaigns/:id` | Update campaign |
+
+| Method | Endpoint             | Description     |
+| ------ | -------------------- | --------------- |
+| GET    | `/api/campaigns`     | List campaigns  |
+| GET    | `/api/campaigns/:id` | Get campaign    |
+| POST   | `/api/campaigns`     | Create campaign |
+| PUT    | `/api/campaigns/:id` | Update campaign |
 
 ### Operations (staff+)
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/operations/leads` | List leads |
-| POST | `/api/operations/leads` | Create lead |
-| PUT | `/api/operations/leads/:id` | Update lead |
-| GET | `/api/operations/reports` | List reports |
-| POST | `/api/operations/reports` | Create report |
-| GET | `/api/operations/daily-plans` | My daily plans |
-| POST | `/api/operations/daily-plans` | Create plan |
-| PATCH | `/api/operations/daily-plans/:id/toggle` | Toggle complete |
+
+| Method | Endpoint                                 | Description     |
+| ------ | ---------------------------------------- | --------------- |
+| GET    | `/api/operations/leads`                  | List leads      |
+| POST   | `/api/operations/leads`                  | Create lead     |
+| PUT    | `/api/operations/leads/:id`              | Update lead     |
+| GET    | `/api/operations/reports`                | List reports    |
+| POST   | `/api/operations/reports`                | Create report   |
+| GET    | `/api/operations/daily-plans`            | My daily plans  |
+| POST   | `/api/operations/daily-plans`            | Create plan     |
+| PATCH  | `/api/operations/daily-plans/:id/toggle` | Toggle complete |
 
 ### Notifications
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/notifications` | List notifications |
-| GET | `/api/notifications/unread-count` | Unread count |
-| PATCH | `/api/notifications/:id/read` | Mark read |
-| PATCH | `/api/notifications/:id/dismiss` | Dismiss |
-| POST | `/api/notifications/mark-all-read` | Mark all read |
+
+| Method | Endpoint                           | Description        |
+| ------ | ---------------------------------- | ------------------ |
+| GET    | `/api/notifications`               | List notifications |
+| GET    | `/api/notifications/unread-count`  | Unread count       |
+| PATCH  | `/api/notifications/:id/read`      | Mark read          |
+| PATCH  | `/api/notifications/:id/dismiss`   | Dismiss            |
+| POST   | `/api/notifications/mark-all-read` | Mark all read      |
 
 ### Audit Logs (super_admin only)
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/audit` | List audit logs |
+
+| Method | Endpoint     | Description     |
+| ------ | ------------ | --------------- |
+| GET    | `/api/audit` | List audit logs |
 
 ---
 
@@ -267,12 +279,12 @@ https://api.yourdomain.com/api
 
 ## Default Credentials (seed data)
 
-| Email | Password | Role |
-|-------|----------|------|
-| superadmin@chargebyte.com | ChargeByte2024! | Super Admin |
-| admin@chargebyte.com | ChargeByte2024! | Admin |
-| staff@chargebyte.com | ChargeByte2024! | Staff |
-| partner@chargebyte.com | ChargeByte2024! | Location Partner |
-| adclient@chargebyte.com | ChargeByte2024! | Advertising Client |
+| Email                     | Password        | Role               |
+| ------------------------- | --------------- | ------------------ |
+| superadmin@chargebyte.com | ChargeByte2024! | Super Admin        |
+| admin@chargebyte.com      | ChargeByte2024! | Admin              |
+| staff@chargebyte.com      | ChargeByte2024! | Staff              |
+| partner@chargebyte.com    | ChargeByte2024! | Location Partner   |
+| adclient@chargebyte.com   | ChargeByte2024! | Advertising Client |
 
 **⚠️ Change all passwords immediately after first login in production!**

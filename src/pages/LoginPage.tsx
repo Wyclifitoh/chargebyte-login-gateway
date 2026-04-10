@@ -13,7 +13,11 @@ const LoginPage = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [errors, setErrors] = useState<{ email?: string; password?: string; general?: string }>({});
+  const [errors, setErrors] = useState<{
+    email?: string;
+    password?: string;
+    general?: string;
+  }>({});
   const [isLoading, setIsLoading] = useState(false);
 
   // If already logged in, redirect
@@ -22,7 +26,8 @@ const LoginPage = () => {
     return null;
   }
 
-  const validateEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  const validateEmail = (email: string) =>
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,13 +71,16 @@ const LoginPage = () => {
           <div>
             <div className="flex items-center gap-3 mb-12">
               <img src={logo} alt="ChargeByte Logo" width={48} height={48} />
-              <span className="text-2xl font-bold text-primary">ChargeByte</span>
+              <span className="text-2xl font-bold text-primary">
+                ChargeByte
+              </span>
             </div>
             <h1 className="text-3xl font-bold leading-tight text-login-panel-foreground mb-4">
               Power Your EV Network
             </h1>
             <p className="text-login-panel-foreground/70 leading-relaxed">
-              Manage your charging infrastructure, monitor stations, track revenue, and grow your network — all from one powerful dashboard.
+              Manage your charging infrastructure, monitor stations, track
+              revenue, and grow your network — all from one powerful dashboard.
             </p>
             <div className="mt-8 space-y-2 text-sm text-login-panel-foreground/50">
               <p>Demo accounts (any password):</p>
@@ -90,7 +98,13 @@ const LoginPage = () => {
 
         {/* Right Panel */}
         <div className="relative flex w-full flex-col items-center justify-center lg:w-7/12">
-          <img src={loginBg} alt="" className="absolute inset-0 h-full w-full object-cover" width={1920} height={1080} />
+          <img
+            src={loginBg}
+            alt=""
+            className="absolute inset-0 h-full w-full object-cover"
+            width={1920}
+            height={1080}
+          />
           <div className="absolute inset-0 bg-foreground/80 backdrop-blur-sm" />
 
           <div className="relative z-10 w-full max-w-md px-8 py-12">
@@ -99,8 +113,12 @@ const LoginPage = () => {
               <span className="text-xl font-bold text-primary">ChargeByte</span>
             </div>
 
-            <h2 className="text-2xl font-bold text-login-panel-foreground mb-2">Welcome back</h2>
-            <p className="text-login-panel-foreground/60 mb-8">Sign in to your account to continue</p>
+            <h2 className="text-2xl font-bold text-login-panel-foreground mb-2">
+              Welcome back
+            </h2>
+            <p className="text-login-panel-foreground/60 mb-8">
+              Sign in to your account to continue
+            </p>
 
             {errors.general && (
               <div className="mb-6 rounded-lg bg-destructive/20 border border-destructive/30 p-3 text-sm text-destructive">
@@ -116,11 +134,18 @@ const LoginPage = () => {
                     type="email"
                     placeholder="Email address"
                     value={email}
-                    onChange={(e) => { setEmail(e.target.value); setErrors((prev) => ({ ...prev, email: undefined })); }}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      setErrors((prev) => ({ ...prev, email: undefined }));
+                    }}
                     className="pl-10 bg-login-panel-foreground/10 border-login-panel-foreground/20 text-login-panel-foreground placeholder:text-login-panel-foreground/40 focus-visible:ring-primary h-12"
                   />
                 </div>
-                {errors.email && <p className="mt-1.5 text-xs text-destructive">{errors.email}</p>}
+                {errors.email && (
+                  <p className="mt-1.5 text-xs text-destructive">
+                    {errors.email}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -130,23 +155,45 @@ const LoginPage = () => {
                     type={showPassword ? "text" : "password"}
                     placeholder="Password"
                     value={password}
-                    onChange={(e) => { setPassword(e.target.value); setErrors((prev) => ({ ...prev, password: undefined })); }}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      setErrors((prev) => ({ ...prev, password: undefined }));
+                    }}
                     className="pl-10 pr-10 bg-login-panel-foreground/10 border-login-panel-foreground/20 text-login-panel-foreground placeholder:text-login-panel-foreground/40 focus-visible:ring-primary h-12"
                   />
-                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-login-panel-foreground/40 hover:text-login-panel-foreground/70 transition-colors">
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-login-panel-foreground/40 hover:text-login-panel-foreground/70 transition-colors"
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
                   </button>
                 </div>
-                {errors.password && <p className="mt-1.5 text-xs text-destructive">{errors.password}</p>}
+                {errors.password && (
+                  <p className="mt-1.5 text-xs text-destructive">
+                    {errors.password}
+                  </p>
+                )}
               </div>
 
               <div className="flex items-center justify-end">
-                <button type="button" className="text-sm text-primary hover:text-primary/80 transition-colors">
+                <button
+                  type="button"
+                  className="text-sm text-primary hover:text-primary/80 transition-colors"
+                >
                   Forgot password?
                 </button>
               </div>
 
-              <Button type="submit" disabled={isLoading} className="w-full h-12 bg-primary text-accent-foreground hover:bg-primary/90 font-semibold text-base transition-all">
+              <Button
+                type="submit"
+                disabled={isLoading}
+                className="w-full h-12 bg-primary text-accent-foreground hover:bg-primary/90 font-semibold text-base transition-all"
+              >
                 {isLoading ? (
                   <span className="flex items-center gap-2">
                     <span className="h-4 w-4 animate-spin rounded-full border-2 border-accent-foreground/30 border-t-accent-foreground" />
