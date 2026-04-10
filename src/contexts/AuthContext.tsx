@@ -1,42 +1,73 @@
-import { createContext, useContext, useState, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { User, UserRole } from "@/types/dashboard";
+import { api, tokenStore } from "@/services/api";
 
 interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
   isAuthenticated: boolean;
+  isLoading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-// Mock users for demo
-const MOCK_USERS: User[] = [
-  { id: "1", name: "Alex Rivera", email: "superadmin@chargebyte.com", role: "super_admin" },
-  { id: "2", name: "Jordan Lee", email: "admin@chargebyte.com", role: "admin" },
-  { id: "3", name: "Sam Chen", email: "staff@chargebyte.com", role: "staff" },
-  { id: "4", name: "Morgan Blake", email: "partner@chargebyte.com", role: "location_partner" },
-  { id: "5", name: "Taylor Swift", email: "adclient@chargebyte.com", role: "advertising_client" },
-];
-
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const login = async (email: string, _password: string): Promise<{ success: boolean; error?: string }> => {
-    // Simulate API delay
-    await new Promise((r) => setTimeout(r, 800));
-    const found = MOCK_USERS.find((u) => u.email === email);
-    if (found) {
-      setUser(found);
-      return { success: true };
+  // Restore session on mount
+  useEffect(() => {
+    const stored = tokenStore.getUser();
+    const token = tokenStore.getAccessToken();
+    if (stored && token) {
+      setUser(stored as User);
     }
-    return { success: false, error: "Invalid email or password" };
+    setIsLoading(false);
+  }, []);
+
+  const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const result = await api.auth.login(email, password);
+      if (result.success && result.data) {
+        const { user: userData, accessToken, refreshToken } = result.data as {
+          user: { id: string; name: string; email: string; role: UserRole; phone?: string; partner_id?: string; partner_type?: string };
+          accessToken: string;
+          refreshToken: string;
+        };
+        tokenStore.setTokens(accessToken, refreshToken);
+        const u: User = {
+          id: userData.id,
+          name: userData.name,
+          email: userData.email,
+          role: userData.role,
+        };
+        tokenStore.setUser(u);
+        setUser(u);
+        return { success: true };
+      }
+      return { success: false, error: result.error || "Login failed" };
+    } catch (e) {
+      return { success: false, error: e instanceof Error ? e.message : "Network error" };
+    }
   };
 
-  const logout = () => setUser(null);
+  const logout = async () => {
+    try {
+      await api.auth.logout();
+    } catch {
+      // ignore
+    }
+    tokenStore.clearTokens();
+    setUser(null);
+  };
+
+  if (isLoading) {
+    return null; // or a loading spinner
+  }
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, isAuthenticated: !!user }}>
+    <AuthContext.Provider value={{ user, login, logout, isAuthenticated: !!user, isLoading }}>
       {children}
     </AuthContext.Provider>
   );
