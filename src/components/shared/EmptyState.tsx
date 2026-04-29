@@ -8,7 +8,7 @@ interface EmptyStateProps {
   action?: ReactNode;
 }
 
-const EmptyState = ({ icon, title = "No data found", description, action }: EmptyStateProps) => (
+const EmptyState = ({ icon, title = "No data yet", description, action }: EmptyStateProps) => (
   <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
     <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center mb-4">
       {icon || <Inbox className="h-6 w-6 text-muted-foreground" />}

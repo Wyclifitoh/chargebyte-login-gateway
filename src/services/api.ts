@@ -1,212 +1,238 @@
-// Real API service layer with JWT token management
-// Replace API_BASE_URL with your backend server URL
+// Real API service layer with JWT token management.
+// Centralized client: auto-attaches bearer token, dedupes refresh, surfaces typed errors.
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const API_BASE_URL =
+  import.meta.env.VITE_API_URL || "https://dash.chargebyte.io/api";
 
 export interface ApiResponse<T> {
   data: T;
   success: boolean;
   error?: string;
-  meta?: { total: number; page: number; limit: number };
+  meta?: { total: number; page: number; limit: number; pages?: number };
 }
 
-// Token management
+// ---------------- Token store ----------------
 const tokenStore = {
-  getAccessToken: () => localStorage.getItem('cb_access_token'),
-  getRefreshToken: () => localStorage.getItem('cb_refresh_token'),
+  getAccessToken: () => localStorage.getItem("cb_access_token"),
+  getRefreshToken: () => localStorage.getItem("cb_refresh_token"),
   setTokens: (access: string, refresh: string) => {
-    localStorage.setItem('cb_access_token', access);
-    localStorage.setItem('cb_refresh_token', refresh);
+    localStorage.setItem("cb_access_token", access);
+    localStorage.setItem("cb_refresh_token", refresh);
   },
   clearTokens: () => {
-    localStorage.removeItem('cb_access_token');
-    localStorage.removeItem('cb_refresh_token');
-    localStorage.removeItem('cb_user');
+    localStorage.removeItem("cb_access_token");
+    localStorage.removeItem("cb_refresh_token");
+    localStorage.removeItem("cb_user");
   },
   getUser: () => {
-    const u = localStorage.getItem('cb_user');
+    const u = localStorage.getItem("cb_user");
     return u ? JSON.parse(u) : null;
   },
-  setUser: (user: unknown) => localStorage.setItem('cb_user', JSON.stringify(user)),
+  setUser: (user: unknown) =>
+    localStorage.setItem("cb_user", JSON.stringify(user)),
 };
 
 export { tokenStore };
 
-// Core fetch with auth headers and token refresh
-async function authFetch(url: string, options: RequestInit = {}): Promise<Response> {
+// ---------------- Refresh dedupe ----------------
+let refreshInFlight: Promise<string | null> | null = null;
+
+async function doRefresh(): Promise<string | null> {
+  const refreshToken = tokenStore.getRefreshToken();
+  if (!refreshToken) return null;
+  try {
+    const res = await fetch(`${API_BASE_URL}/auth/refresh`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refreshToken }),
+    });
+    if (!res.ok) return null;
+    const json = await res.json();
+    if (!json.success || !json.data?.accessToken) return null;
+    tokenStore.setTokens(json.data.accessToken, json.data.refreshToken);
+    return json.data.accessToken as string;
+  } catch {
+    return null;
+  }
+}
+
+function refreshAccessToken(): Promise<string | null> {
+  if (!refreshInFlight) {
+    refreshInFlight = doRefresh().finally(() => {
+      refreshInFlight = null;
+    });
+  }
+  return refreshInFlight;
+}
+
+// ---------------- Core fetch ----------------
+function buildQS(params?: Record<string, string | number | boolean | undefined | null>): string {
+  if (!params) return "";
+  const usp = new URLSearchParams();
+  Object.entries(params).forEach(([k, v]) => {
+    if (v === undefined || v === null || v === "") return;
+    usp.append(k, String(v));
+  });
+  const s = usp.toString();
+  return s ? `?${s}` : "";
+}
+
+async function authFetch(
+  url: string,
+  options: RequestInit = {},
+): Promise<Response> {
   const token = tokenStore.getAccessToken();
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    ...(options.headers as Record<string, string> || {}),
+    "Content-Type": "application/json",
+    ...((options.headers as Record<string, string>) || {}),
   };
-  if (token) headers['Authorization'] = `Bearer ${token}`;
+  if (token) headers["Authorization"] = `Bearer ${token}`;
 
   let response = await fetch(`${API_BASE_URL}${url}`, { ...options, headers });
 
-  // Auto-refresh on 401
   if (response.status === 401 && tokenStore.getRefreshToken()) {
-    const refreshRes = await fetch(`${API_BASE_URL}/auth/refresh`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refreshToken: tokenStore.getRefreshToken() }),
-    });
-
-    if (refreshRes.ok) {
-      const refreshData = await refreshRes.json();
-      if (refreshData.success) {
-        tokenStore.setTokens(refreshData.data.accessToken, refreshData.data.refreshToken);
-        headers['Authorization'] = `Bearer ${refreshData.data.accessToken}`;
-        response = await fetch(`${API_BASE_URL}${url}`, { ...options, headers });
-      }
+    const newToken = await refreshAccessToken();
+    if (newToken) {
+      headers["Authorization"] = `Bearer ${newToken}`;
+      response = await fetch(`${API_BASE_URL}${url}`, { ...options, headers });
     } else {
       tokenStore.clearTokens();
-      window.location.href = '/';
+      // Only redirect if not already on login
+      if (window.location.pathname !== "/") window.location.href = "/";
     }
   }
-
   return response;
 }
 
 async function apiGet<T>(url: string): Promise<ApiResponse<T>> {
   const res = await authFetch(url);
-  return res.json();
+  try { return await res.json(); }
+  catch { return { success: false, data: null as unknown as T, error: `HTTP ${res.status}` }; }
 }
-
 async function apiPost<T>(url: string, body: unknown): Promise<ApiResponse<T>> {
-  const res = await authFetch(url, { method: 'POST', body: JSON.stringify(body) });
-  return res.json();
+  const res = await authFetch(url, { method: "POST", body: JSON.stringify(body) });
+  try { return await res.json(); }
+  catch { return { success: false, data: null as unknown as T, error: `HTTP ${res.status}` }; }
 }
-
 async function apiPut<T>(url: string, body: unknown): Promise<ApiResponse<T>> {
-  const res = await authFetch(url, { method: 'PUT', body: JSON.stringify(body) });
-  return res.json();
+  const res = await authFetch(url, { method: "PUT", body: JSON.stringify(body) });
+  try { return await res.json(); }
+  catch { return { success: false, data: null as unknown as T, error: `HTTP ${res.status}` }; }
 }
-
 async function apiDelete<T>(url: string): Promise<ApiResponse<T>> {
-  const res = await authFetch(url, { method: 'DELETE' });
-  return res.json();
+  const res = await authFetch(url, { method: "DELETE" });
+  try { return await res.json(); }
+  catch { return { success: false, data: null as unknown as T, error: `HTTP ${res.status}` }; }
 }
 
-// API endpoints organized by domain
+// ---------------- Endpoints ----------------
 export const api = {
-  // Auth
   auth: {
-    login: (email: string, password: string) => apiPost<{ user: unknown; accessToken: string; refreshToken: string }>('/auth/login', { email, password }),
-    logout: () => apiPost('/auth/logout', {}),
-    refresh: (refreshToken: string) => apiPost('/auth/refresh', { refreshToken }),
-    getMe: () => apiGet('/auth/me'),
+    login: (email: string, password: string) =>
+      apiPost<{ user: unknown; accessToken: string; refreshToken: string }>(
+        "/auth/login",
+        { email, password },
+      ),
+    logout: () => apiPost("/auth/logout", {}),
+    refresh: (refreshToken: string) => apiPost("/auth/refresh", { refreshToken }),
+    getMe: () => apiGet("/auth/me"),
   },
 
-  // Dashboard overview
   overview: {
-    getDashboard: () => apiGet('/overview/dashboard'),
+    getDashboard: (params?: Record<string, string | number | undefined>) =>
+      apiGet(`/overview/dashboard${buildQS(params)}`),
   },
 
-  // Rentals
   rentals: {
-    getAll: (params?: Record<string, string>) => {
-      const qs = params ? '?' + new URLSearchParams(params).toString() : '';
-      return apiGet(`/rentals${qs}`);
-    },
+    getAll: (params?: Record<string, string | number | undefined>) =>
+      apiGet(`/rentals${buildQS(params)}`),
     getById: (id: string) => apiGet(`/rentals/${id}`),
-    getStats: () => apiGet('/rentals/stats'),
+    getSummary: (params?: Record<string, string | number | undefined>) =>
+      apiGet(`/rentals/summary${buildQS(params)}`),
+    sendSms: (data: { phone_number: string; message: string; rental_id?: string }) =>
+      apiPost("/rentals/sms", data),
   },
 
-  // Machines
   machines: {
-    getAll: () => apiGet('/machines'),
+    getAll: () => apiGet("/machines"),
     getById: (id: string) => apiGet(`/machines/${id}`),
-    create: (data: unknown) => apiPost('/machines', data),
+    create: (data: unknown) => apiPost("/machines", data),
     update: (id: string, data: unknown) => apiPut(`/machines/${id}`, data),
     delete: (id: string) => apiDelete(`/machines/${id}`),
   },
 
-  // Stations
   stations: {
-    getAll: () => apiGet('/stations'),
+    getAll: () => apiGet("/stations"),
     getById: (id: string) => apiGet(`/stations/${id}`),
-    create: (data: unknown) => apiPost('/stations', data),
+    create: (data: unknown) => apiPost("/stations", data),
     update: (id: string, data: unknown) => apiPut(`/stations/${id}`, data),
     delete: (id: string) => apiDelete(`/stations/${id}`),
-    getDashboard: () => apiGet('/stations/dashboard'),
   },
 
-  // Revenue
   revenue: {
-    getSummary: () => apiGet('/revenue/summary'),
-    getOverTime: (days?: number) => apiGet(`/revenue/over-time${days ? `?days=${days}` : ''}`),
-    getByStation: () => apiGet('/revenue/by-station'),
-    getBreakdown: () => apiGet('/revenue/breakdown'),
+    getSummary: (params?: Record<string, string | number | undefined>) =>
+      apiGet(`/revenue/summary${buildQS(params)}`),
+    getOverTime: (params?: Record<string, string | number | undefined>) =>
+      apiGet(`/revenue/over-time${buildQS(params)}`),
+    getByStation: (params?: Record<string, string | number | undefined>) =>
+      apiGet(`/revenue/by-station${buildQS(params)}`),
+    getByMachine: (params?: Record<string, string | number | undefined>) =>
+      apiGet(`/revenue/by-machine${buildQS(params)}`),
+    getBreakdown: (params?: Record<string, string | number | undefined>) =>
+      apiGet(`/revenue/breakdown${buildQS(params)}`),
+    getTransactions: (params?: Record<string, string | number | undefined>) =>
+      apiGet(`/revenue/transactions${buildQS(params)}`),
   },
 
-  // Transactions / M-Pesa
   transactions: {
-    getAll: (params?: Record<string, string>) => {
-      const qs = params ? '?' + new URLSearchParams(params).toString() : '';
-      return apiGet(`/transactions${qs}`);
-    },
+    getAll: (params?: Record<string, string | number | undefined>) =>
+      apiGet(`/transactions${buildQS(params)}`),
     getById: (id: string) => apiGet(`/transactions/${id}`),
-    getCallbacks: (params?: Record<string, string>) => {
-      const qs = params ? '?' + new URLSearchParams(params).toString() : '';
-      return apiGet(`/transactions/callbacks${qs}`);
-    },
+    getCallbacks: (params?: Record<string, string | number | undefined>) =>
+      apiGet(`/transactions/callbacks${buildQS(params)}`),
   },
 
-  // Partners
   partners: {
-    getAll: () => apiGet('/partners'),
+    getAll: () => apiGet("/partners"),
     getById: (id: string) => apiGet(`/partners/${id}`),
-    create: (data: unknown) => apiPost('/partners', data),
+    create: (data: unknown) => apiPost("/partners", data),
     update: (id: string, data: unknown) => apiPut(`/partners/${id}`, data),
-    getPayouts: () => apiGet('/partners/payouts'),
+    getPayouts: () => apiGet("/partners/payouts"),
   },
 
-  // Events
   events: {
-    getAll: (params?: Record<string, string>) => {
-      const qs = params ? '?' + new URLSearchParams(params).toString() : '';
-      return apiGet(`/events${qs}`);
-    },
+    getAll: (params?: Record<string, string | number | undefined>) =>
+      apiGet(`/events${buildQS(params)}`),
     getById: (id: string) => apiGet(`/events/${id}`),
-    create: (data: unknown) => apiPost('/events', data),
+    create: (data: unknown) => apiPost("/events", data),
     update: (id: string, data: unknown) => apiPut(`/events/${id}`, data),
   },
 
-  // Activations
   activations: {
-    getLocations: () => apiGet('/activations/locations'),
-    getContacts: (params?: Record<string, string>) => {
-      const qs = params ? '?' + new URLSearchParams(params).toString() : '';
-      return apiGet(`/activations/contacts${qs}`);
-    },
-    getStats: () => apiGet('/activations/stats'),
+    getLocations: () => apiGet("/activations/locations"),
+    getContacts: (params?: Record<string, string | number | undefined>) =>
+      apiGet(`/activations/contacts${buildQS(params)}`),
+    getStats: () => apiGet("/activations/stats"),
   },
 
-  // Users
   users: {
-    getAll: () => apiGet('/users'),
+    getAll: () => apiGet("/users"),
     getById: (id: string) => apiGet(`/users/${id}`),
-    create: (data: unknown) => apiPost('/users', data),
+    create: (data: unknown) => apiPost("/users", data),
     update: (id: string, data: unknown) => apiPut(`/users/${id}`, data),
     delete: (id: string) => apiDelete(`/users/${id}`),
   },
 
-  // Audit
   audit: {
-    getLogs: (params?: Record<string, string>) => {
-      const qs = params ? '?' + new URLSearchParams(params).toString() : '';
-      return apiGet(`/audit${qs}`);
-    },
+    getLogs: (params?: Record<string, string | number | undefined>) =>
+      apiGet(`/audit${buildQS(params)}`),
   },
 
-  // Notifications
   notifications: {
-    getAll: (params?: Record<string, string>) => {
-      const qs = params ? '?' + new URLSearchParams(params).toString() : '';
-      return apiGet(`/notifications${qs}`);
-    },
+    getAll: (params?: Record<string, string | number | undefined>) =>
+      apiGet(`/notifications${buildQS(params)}`),
     resolve: (id: string) => apiPut(`/notifications/${id}/resolve`, {}),
-    create: (data: unknown) => apiPost('/notifications', data),
+    create: (data: unknown) => apiPost("/notifications", data),
   },
 };
 

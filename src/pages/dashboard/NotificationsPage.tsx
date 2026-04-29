@@ -1,12 +1,15 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import StatusBadge from "@/components/StatusBadge";
-import { PageHeader, FilterBar, EmptyState } from "@/components/shared";
-import { mockNotifications, Notification } from "@/data/extendedMockData";
+import { PageHeader, FilterBar, EmptyState, FallbackBanner, TableSkeleton } from "@/components/shared";
+import { mockNotifications, Notification as ExtNotification } from "@/data/extendedMockData";
+import { useNotifications } from "@/hooks/useDashboardData";
 import { useAuth } from "@/contexts/AuthContext";
+import { formatDateTime } from "@/lib/format";
 import { Bell, Check, X, AlertTriangle, Info, AlertCircle } from "lucide-react";
+import type { Notification as BackendNotification } from "@/types/dashboard";
 
 const severityIcon = (s: string) => {
   switch (s) {
@@ -16,13 +19,36 @@ const severityIcon = (s: string) => {
   }
 };
 
+const priorityToSeverity = (p?: string): ExtNotification["severity"] => {
+  if (p === "high") return "critical";
+  if (p === "medium") return "warning";
+  return "info";
+};
+
 const NotificationsPage = () => {
   const { user } = useAuth();
-  const [notifications, setNotifications] = useState(mockNotifications);
+  const notifQ = useNotifications();
+  const [notifications, setNotifications] = useState<ExtNotification[]>(mockNotifications);
   const [filterType, setFilterType] = useState("all");
   const [filterSeverity, setFilterSeverity] = useState("all");
   const [filterRead, setFilterRead] = useState("all");
   const [search, setSearch] = useState("");
+
+  useEffect(() => {
+    if (notifQ.isLoading || notifQ.isFallback) return;
+    const mapped: ExtNotification[] = (notifQ.data as BackendNotification[]).map((n) => ({
+      id: String(n.id),
+      title: n.title,
+      description: n.message,
+      time: formatDateTime(n.created_at),
+      severity: priorityToSeverity(n.priority),
+      type: "system",
+      related_entity: undefined,
+      read: Boolean(n.resolved),
+      roles: ["super_admin", "staff", "location_partner", "funding_partner", "ad_client", "system"],
+    }));
+    setNotifications(mapped);
+  }, [notifQ.data, notifQ.isLoading, notifQ.isFallback]);
 
   const roleFiltered = notifications.filter((n) => user && n.roles.includes(user.role));
   const filtered = roleFiltered.filter((n) => {
@@ -47,6 +73,8 @@ const NotificationsPage = () => {
         badge={unreadCount > 0 ? <span className="bg-destructive text-destructive-foreground text-xs font-bold px-2 py-0.5 rounded-full">{unreadCount}</span> : undefined}
         actions={<Button variant="outline" size="sm" onClick={markAllRead}>Mark all read</Button>}
       />
+
+      {notifQ.isFallback && !notifQ.isLoading && <FallbackBanner onRetry={notifQ.refetch} />}
 
       <FilterBar searchValue={search} onSearchChange={setSearch} searchPlaceholder="Search notifications...">
         <Select value={filterType} onValueChange={setFilterType}>
@@ -76,6 +104,7 @@ const NotificationsPage = () => {
       </FilterBar>
 
       <div className="space-y-3">
+        {notifQ.isLoading && <TableSkeleton rows={4} columns={1} showHeader={false} />}
         {filtered.map((n) => (
           <Card key={n.id} className={`${!n.read ? "border-l-4 border-l-primary" : ""}`}>
             <CardContent className="flex items-start gap-4 py-4 px-4">

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Eye, EyeOff, Mail, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -20,14 +20,14 @@ const LoginPage = () => {
   }>({});
   const [isLoading, setIsLoading] = useState(false);
 
-  // If already logged in, redirect
-  if (isAuthenticated) {
-    navigate("/dashboard");
-    return null;
-  }
+  // If already logged in, redirect (in effect to avoid render-time navigate)
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate("/dashboard", { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
 
-  const validateEmail = (email: string) =>
-    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  const validateEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -71,18 +71,16 @@ const LoginPage = () => {
           <div>
             <div className="flex items-center gap-3 mb-12">
               <img src={logo} alt="ChargeByte Logo" width={48} height={48} />
-              <span className="text-2xl font-bold text-primary">
-                ChargeByte
-              </span>
+              <span className="text-2xl font-bold text-primary">ChargeByte</span>
             </div>
             <h1 className="text-3xl font-bold leading-tight text-login-panel-foreground mb-4">
               Power Your EV Network
             </h1>
             <p className="text-login-panel-foreground/70 leading-relaxed">
-              Manage your charging infrastructure, monitor stations, track
-              revenue, and grow your network — all from one powerful dashboard.
+              Manage your charging infrastructure, monitor stations, track revenue, and grow your
+              network — all from one powerful dashboard.
             </p>
-            <div className="mt-8 space-y-2 text-sm text-login-panel-foreground/50">
+            <div className="hidden mt-8 space-y-2 text-sm text-login-panel-foreground/50">
               <p>Demo accounts (any password):</p>
               <p>• superadmin@chargebyte.com</p>
               <p>• admin@chargebyte.com</p>
@@ -113,9 +111,7 @@ const LoginPage = () => {
               <span className="text-xl font-bold text-primary">ChargeByte</span>
             </div>
 
-            <h2 className="text-2xl font-bold text-login-panel-foreground mb-2">
-              Welcome back
-            </h2>
+            <h2 className="text-2xl font-bold text-login-panel-foreground mb-2">Welcome back</h2>
             <p className="text-login-panel-foreground/60 mb-8">
               Sign in to your account to continue
             </p>
@@ -141,11 +137,7 @@ const LoginPage = () => {
                     className="pl-10 bg-login-panel-foreground/10 border-login-panel-foreground/20 text-login-panel-foreground placeholder:text-login-panel-foreground/40 focus-visible:ring-primary h-12"
                   />
                 </div>
-                {errors.email && (
-                  <p className="mt-1.5 text-xs text-destructive">
-                    {errors.email}
-                  </p>
-                )}
+                {errors.email && <p className="mt-1.5 text-xs text-destructive">{errors.email}</p>}
               </div>
 
               <div>
@@ -166,17 +158,11 @@ const LoginPage = () => {
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-login-panel-foreground/40 hover:text-login-panel-foreground/70 transition-colors"
                   >
-                    {showPassword ? (
-                      <EyeOff className="h-4 w-4" />
-                    ) : (
-                      <Eye className="h-4 w-4" />
-                    )}
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
                 {errors.password && (
-                  <p className="mt-1.5 text-xs text-destructive">
-                    {errors.password}
-                  </p>
+                  <p className="mt-1.5 text-xs text-destructive">{errors.password}</p>
                 )}
               </div>
 

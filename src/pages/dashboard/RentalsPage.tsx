@@ -1,173 +1,538 @@
-import { useState, useMemo } from "react";
-import { ArrowUpDown, Car, CheckCircle, Clock, XCircle } from "lucide-react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useState } from "react";
+import {
+  ArrowUpDown,
+  Car,
+  CheckCircle,
+  Clock,
+  XCircle,
+  MessageSquare,
+  Wallet,
+  Coins,
+  Timer,
+  Send,
+} from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 import StatusBadge from "@/components/StatusBadge";
 import MetricCard from "@/components/MetricCard";
-import { PageHeader, FilterBar, DetailRow, EmptyState } from "@/components/shared";
-import { mockExtendedRentals, STATIONS, MACHINES, RENTAL_STATUSES, type ExtendedRental } from "@/data/revenueData";
+import {
+  PageHeader,
+  FilterBar,
+  DetailRow,
+  EmptyState,
+  TableSkeleton,
+  ErrorState,
+  Pagination,
+  DateRangeFilter,
+  FallbackBanner,
+} from "@/components/shared";
+import {
+  useRentals,
+  useRentalsSummary,
+  useStations,
+  useMachines,
+  type DatePeriod,
+} from "@/hooks/useDashboardData";
+import { formatKsh, formatDateTime } from "@/lib/format";
+import { api } from "@/services/api";
+import type { Rental } from "@/types/dashboard";
+
+interface RentalRow extends Rental {
+  station_name?: string;
+  machine_name?: string;
+}
+
+const PAGE_SIZE = 25;
+
+const formatDuration = (mins: number) => {
+  if (!mins || mins <= 0) return "0 min";
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  if (h >= 24) {
+    const d = Math.floor(h / 24);
+    const rh = h % 24;
+    return `${d}d ${rh}h`;
+  }
+  if (h > 0) return `${h}h ${m}m`;
+  return `${m} min`;
+};
 
 const RentalsPage = () => {
   const [search, setSearch] = useState("");
   const [stationFilter, setStationFilter] = useState("all");
-  const [machineFilter, setMachineFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [depositFilter, setDepositFilter] = useState("all");
-  const [sortKey, setSortKey] = useState<string | null>(null);
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
-  const [selectedRental, setSelectedRental] = useState<ExtendedRental | null>(null);
+  const [period, setPeriod] = useState<DatePeriod>("all");
+  const [dateFrom, setDateFrom] = useState<string | undefined>();
+  const [dateTo, setDateTo] = useState<string | undefined>();
+  const [page, setPage] = useState(1);
+  const [sortKey, setSortKey] = useState<keyof RentalRow | null>(null);
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [selected, setSelected] = useState<RentalRow | null>(null);
 
-  const filtered = useMemo(() => {
-    return mockExtendedRentals.filter((r) => {
-      if (search && !r.rentalCode.toLowerCase().includes(search.toLowerCase()) && !r.phoneNumber.includes(search)) return false;
-      if (stationFilter !== "all" && r.station !== stationFilter) return false;
-      if (machineFilter !== "all" && r.machine !== machineFilter) return false;
-      if (statusFilter !== "all" && r.status !== statusFilter) return false;
-      if (depositFilter === "yes" && !r.depositRefunded) return false;
-      if (depositFilter === "no" && r.depositRefunded) return false;
-      return true;
-    });
-  }, [search, stationFilter, machineFilter, statusFilter, depositFilter]);
+  // SMS modal state
+  const [smsTarget, setSmsTarget] = useState<RentalRow | null>(null);
+  const [smsPhone, setSmsPhone] = useState("");
+  const [smsMessage, setSmsMessage] = useState("");
+  const [smsSending, setSmsSending] = useState(false);
 
-  const sorted = useMemo(() => {
-    if (!sortKey) return filtered;
-    return [...filtered].sort((a, b) => {
-      const av = a[sortKey as keyof ExtendedRental];
-      const bv = b[sortKey as keyof ExtendedRental];
-      if (av === undefined || bv === undefined) return 0;
+  const { data: stations } = useStations();
+  const { data: machines } = useMachines();
+
+  // Filters shared between page list & summary (summary covers full period, no pagination)
+  const filterParams = {
+    period,
+    date_from: period === "custom" ? dateFrom : undefined,
+    date_to: period === "custom" ? dateTo : undefined,
+    status: statusFilter === "all" ? undefined : statusFilter,
+    station_id: stationFilter === "all" ? undefined : stationFilter,
+    search: search || undefined,
+  };
+
+  const {
+    data: rentals,
+    meta,
+    isLoading,
+    error,
+    isFallback,
+    refetch,
+  } = useRentals({
+    page,
+    limit: PAGE_SIZE,
+    ...filterParams,
+  });
+  const { data: summary, isLoading: summaryLoading } = useRentalsSummary(filterParams);
+
+  const stationName = (id: string) =>
+    (rentals as RentalRow[]).find((r) => r.station_id === id)?.station_name ??
+    stations.find((s) => s.id === id)?.name ??
+    id;
+  const machineName = (id: string) =>
+    (rentals as RentalRow[]).find((r) => r.machine_id === id)?.machine_name ??
+    machines.find((m) => m.id === id)?.name ??
+    id;
+
+  // Local sort over the current page
+  const sorted = (() => {
+    const rows = rentals as RentalRow[];
+    if (!sortKey) return rows;
+    return [...rows].sort((a, b) => {
+      const av = a[sortKey];
+      const bv = b[sortKey];
+      if (av == null || bv == null) return 0;
       if (av < bv) return sortDir === "asc" ? -1 : 1;
       if (av > bv) return sortDir === "asc" ? 1 : -1;
       return 0;
     });
-  }, [filtered, sortKey, sortDir]);
+  })();
 
-  const handleSort = (key: string) => {
+  const handleSort = (key: keyof RentalRow) => {
     if (sortKey === key) setSortDir(sortDir === "asc" ? "desc" : "asc");
-    else { setSortKey(key); setSortDir("asc"); }
+    else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
   };
 
-  const activeCount = mockExtendedRentals.filter((r) => r.status === "active").length;
-  const completedCount = mockExtendedRentals.filter((r) => r.status === "completed").length;
-  const overdueCount = mockExtendedRentals.filter((r) => r.status === "overdue").length;
-  const cancelledCount = mockExtendedRentals.filter((r) => r.status === "cancelled").length;
+  const total = meta?.total ?? rentals.length;
+  const totalPages = meta?.pages ?? 1;
 
-  const columns = [
-    { key: "rentalCode", label: "Rental Code" },
-    { key: "phoneNumber", label: "Phone" },
-    { key: "station", label: "Station" },
-    { key: "machine", label: "Machine" },
-    { key: "powerbankId", label: "Powerbank" },
-    { key: "startTime", label: "Start" },
-    { key: "endTime", label: "End" },
-    { key: "durationMinutes", label: "Duration" },
-    { key: "totalAmount", label: "Amount" },
-    { key: "depositAmount", label: "Deposit" },
-    { key: "depositRefunded", label: "Refunded" },
+  const columns: Array<{ key: keyof RentalRow; label: string }> = [
+    { key: "rental_code", label: "Rental Code" },
+    { key: "phone_number", label: "Phone" },
+    { key: "station_id", label: "Station" },
+    // { key: "machine_id", label: "Machine" },
+    // { key: "powerbank_id", label: "Powerbank" },
+    { key: "start_time", label: "Start" },
+    { key: "end_time", label: "End" },
+    { key: "duration_minutes", label: "Duration" },
+    { key: "total_amount", label: "Amount" },
+    { key: "deposit_amount", label: "Deposit" },
+    { key: "deposit_refunded", label: "Refunded" },
     { key: "status", label: "Status" },
   ];
+
+  const onFilterChange = (cb: () => void) => {
+    cb();
+    setPage(1);
+  };
+
+  const openSms = (r: RentalRow, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSmsTarget(r);
+    setSmsPhone(r.phone_number || "");
+    setSmsMessage(`Hi, regarding your rental ${r.rental_code}: `);
+  };
+
+  const sendSms = async () => {
+    if (!smsPhone.trim() || !smsMessage.trim()) {
+      toast.error("Phone and message are required");
+      return;
+    }
+    setSmsSending(true);
+    try {
+      const res = await api.rentals.sendSms({
+        phone_number: smsPhone.trim(),
+        message: smsMessage.trim(),
+        rental_id: smsTarget?.id,
+      });
+      if (res.success) {
+        toast.success(`SMS sent to ${smsPhone}`);
+        setSmsTarget(null);
+        setSmsMessage("");
+      } else {
+        toast.error(res.error || "Failed to send SMS");
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to send SMS");
+    } finally {
+      setSmsSending(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
       <PageHeader title="Rentals Management" description="Track and manage all powerbank rentals" />
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <MetricCard title="Active Rentals" value={activeCount} icon={<Car className="h-5 w-5" />} />
-        <MetricCard title="Completed" value={completedCount} change={8} icon={<CheckCircle className="h-5 w-5" />} />
-        <MetricCard title="Overdue" value={overdueCount} icon={<Clock className="h-5 w-5" />} />
-        <MetricCard title="Cancelled" value={cancelledCount} icon={<XCircle className="h-5 w-5" />} />
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <DateRangeFilter
+          period={period}
+          dateFrom={dateFrom}
+          dateTo={dateTo}
+          onChange={(next) =>
+            onFilterChange(() => {
+              setPeriod(next.period);
+              setDateFrom(next.date_from);
+              setDateTo(next.date_to);
+            })
+          }
+        />
+        <div className="text-sm text-muted-foreground">
+          {total > 0 && (
+            <>
+              Showing {rentals.length} of {total} rentals
+            </>
+          )}
+        </div>
       </div>
 
-      <FilterBar searchValue={search} onSearchChange={setSearch} searchPlaceholder="Search by rental code or phone...">
-        <Select value={stationFilter} onValueChange={setStationFilter}>
-          <SelectTrigger className="w-[160px] h-9"><SelectValue placeholder="Station" /></SelectTrigger>
+      {isFallback && <FallbackBanner onRetry={refetch} />}
+
+      {/* Period-wide revenue / volume cards (not page-bound) */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <MetricCard
+          title="Total Revenue (Amount)"
+          value={summaryLoading ? "…" : formatKsh(summary.total_amount)}
+          icon={<Wallet className="h-5 w-5" />}
+        />
+        <MetricCard
+          title="Total Deposits (Refundable)"
+          value={summaryLoading ? "…" : formatKsh(summary.total_deposits)}
+          icon={<Coins className="h-5 w-5" />}
+        />
+        <MetricCard
+          title="Total Duration"
+          value={summaryLoading ? "…" : formatDuration(summary.total_duration_minutes)}
+          icon={<Timer className="h-5 w-5" />}
+        />
+        <MetricCard
+          title="Total Rentals"
+          value={summaryLoading ? "…" : summary.total_rentals}
+          icon={<Car className="h-5 w-5" />}
+        />
+      </div>
+
+      {/* Status breakdown for the period */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <MetricCard
+          title="Active"
+          value={summary.active_count}
+          icon={<Car className="h-5 w-5" />}
+        />
+        <MetricCard
+          title="Completed"
+          value={summary.completed_count}
+          icon={<CheckCircle className="h-5 w-5" />}
+        />
+        <MetricCard
+          title="Overdue"
+          value={summary.overdue_count}
+          icon={<Clock className="h-5 w-5" />}
+        />
+        <MetricCard
+          title="Cancelled"
+          value={summary.cancelled_count}
+          icon={<XCircle className="h-5 w-5" />}
+        />
+      </div>
+
+      <FilterBar
+        searchValue={search}
+        onSearchChange={(v) => onFilterChange(() => setSearch(v))}
+        searchPlaceholder="Search by rental code, phone, or powerbank..."
+      >
+        <Select
+          value={stationFilter}
+          onValueChange={(v) => onFilterChange(() => setStationFilter(v))}
+        >
+          <SelectTrigger className="w-[180px] h-9">
+            <SelectValue placeholder="Station" />
+          </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Stations</SelectItem>
-            {STATIONS.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+            {stations.map((s) => (
+              <SelectItem key={s.id} value={s.id}>
+                {s.name}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
-        <Select value={machineFilter} onValueChange={setMachineFilter}>
-          <SelectTrigger className="w-[160px] h-9"><SelectValue placeholder="Machine" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Machines</SelectItem>
-            {MACHINES.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[140px] h-9"><SelectValue placeholder="Status" /></SelectTrigger>
+        <Select
+          value={statusFilter}
+          onValueChange={(v) => onFilterChange(() => setStatusFilter(v))}
+        >
+          <SelectTrigger className="w-[140px] h-9">
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Statuses</SelectItem>
-            {RENTAL_STATUSES.map((s) => <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Select value={depositFilter} onValueChange={setDepositFilter}>
-          <SelectTrigger className="w-[150px] h-9"><SelectValue placeholder="Deposit Refund" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All</SelectItem>
-            <SelectItem value="yes">Refunded</SelectItem>
-            <SelectItem value="no">Not Refunded</SelectItem>
+            <SelectItem value="active">Active</SelectItem>
+            <SelectItem value="completed">Completed</SelectItem>
+            <SelectItem value="overdue">Overdue</SelectItem>
+            <SelectItem value="cancelled">Cancelled</SelectItem>
           </SelectContent>
         </Select>
       </FilterBar>
 
-      <div className="rounded-xl border border-border bg-card shadow-sm overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-border">
-              {columns.map((col) => (
-                <th key={col.key} className="px-3 py-3 text-left font-medium text-muted-foreground whitespace-nowrap">
-                  <button onClick={() => handleSort(col.key)} className="flex items-center gap-1 hover:text-foreground transition-colors">
-                    {col.label}
-                    <ArrowUpDown className="h-3 w-3" />
-                  </button>
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {sorted.map((r) => (
-              <tr key={r.id} onClick={() => setSelectedRental(r)} className="border-b border-border last:border-0 hover:bg-muted/50 transition-colors cursor-pointer">
-                <td className="px-3 py-3 text-foreground font-mono text-xs">{r.rentalCode}</td>
-                <td className="px-3 py-3 text-foreground">{r.phoneNumber}</td>
-                <td className="px-3 py-3 text-foreground">{r.station}</td>
-                <td className="px-3 py-3 text-foreground">{r.machine}</td>
-                <td className="px-3 py-3 text-foreground font-mono text-xs">{r.powerbankId}</td>
-                <td className="px-3 py-3 text-foreground whitespace-nowrap">{r.startTime}</td>
-                <td className="px-3 py-3 text-foreground whitespace-nowrap">{r.endTime || "—"}</td>
-                <td className="px-3 py-3 text-foreground">{r.durationMinutes > 0 ? `${r.durationMinutes} min` : "—"}</td>
-                <td className="px-3 py-3 text-foreground font-medium">{r.totalAmount > 0 ? `KES ${r.totalAmount}` : "—"}</td>
-                <td className="px-3 py-3 text-foreground">KES {r.depositAmount}</td>
-                <td className="px-3 py-3">{r.depositRefunded ? <span className="text-green-600 font-medium">Yes</span> : <span className="text-muted-foreground">No</span>}</td>
-                <td className="px-3 py-3"><StatusBadge status={r.status} /></td>
-              </tr>
-            ))}
-            {sorted.length === 0 && (
-              <tr><td colSpan={12}><EmptyState title="No rentals found" description="Try adjusting your filters" /></td></tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+      {isLoading ? (
+        <TableSkeleton rows={8} columns={13} />
+      ) : error && !isFallback ? (
+        <ErrorState title="Couldn't load rentals" message={error} onRetry={refetch} />
+      ) : (
+        <>
+          <div className="rounded-xl border border-border bg-card shadow-sm overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border">
+                  {columns.map((col) => (
+                    <th
+                      key={String(col.key)}
+                      className="px-3 py-3 text-left font-medium text-muted-foreground whitespace-nowrap"
+                    >
+                      <button
+                        onClick={() => handleSort(col.key)}
+                        className="flex items-center gap-1 hover:text-foreground transition-colors"
+                      >
+                        {col.label}
+                        <ArrowUpDown className="h-3 w-3" />
+                      </button>
+                    </th>
+                  ))}
+                  <th className="px-3 py-3 text-right font-medium text-muted-foreground whitespace-nowrap">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {sorted.map((r) => (
+                  <tr
+                    key={r.id}
+                    onClick={() => setSelected(r)}
+                    className="border-b border-border last:border-0 hover:bg-muted/50 transition-colors cursor-pointer"
+                  >
+                    <td className="px-3 py-3 text-foreground font-mono text-xs">{r.rental_code}</td>
+                    <td className="px-3 py-3 text-foreground">{r.phone_number}</td>
+                    <td className="px-3 py-3 text-foreground">
+                      {r.station_name ?? stationName(r.station_id)}
+                    </td>
+                    {/* <td className="px-3 py-3 text-foreground">
+                      {r.machine_name ?? machineName(r.machine_id)}
+                    </td>
+                    <td className="px-3 py-3 text-foreground font-mono text-xs">
+                      {r.powerbank_id}
+                    </td> */}
+                    <td className="px-3 py-3 text-foreground whitespace-nowrap">
+                      {formatDateTime(r.start_time)}
+                    </td>
+                    <td className="px-3 py-3 text-foreground whitespace-nowrap">
+                      {r.end_time ? formatDateTime(r.end_time) : "—"}
+                    </td>
+                    <td className="px-3 py-3 text-foreground">
+                      {Number(r.duration_minutes) > 0 ? `${r.duration_minutes} min` : "—"}
+                    </td>
+                    <td className="px-3 py-3 text-foreground font-medium">
+                      {Number(r.total_amount) > 0 ? formatKsh(r.total_amount) : "—"}
+                    </td>
+                    <td className="px-3 py-3 text-foreground">{formatKsh(r.deposit_amount)}</td>
+                    <td className="px-3 py-3">
+                      {r.deposit_refunded ? (
+                        <span className="text-green-600 font-medium">Yes</span>
+                      ) : (
+                        <span className="text-muted-foreground">No</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-3">
+                      <StatusBadge status={r.status} />
+                    </td>
+                    <td className="px-3 py-3 text-right">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={(e) => openSms(r, e)}
+                        className="h-8"
+                      >
+                        <MessageSquare className="h-3.5 w-3.5 mr-1.5" />
+                        SMS
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+                {sorted.length === 0 && (
+                  <tr>
+                    <td colSpan={13}>
+                      <EmptyState
+                        title="No rentals found"
+                        description="Try adjusting your filters or date range."
+                      />
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
 
-      <Sheet open={!!selectedRental} onOpenChange={() => setSelectedRental(null)}>
+          <Pagination
+            currentPage={page}
+            totalPages={totalPages}
+            onPageChange={setPage}
+            totalItems={total}
+            pageSize={PAGE_SIZE}
+          />
+        </>
+      )}
+
+      {/* Detail sheet */}
+      <Sheet open={!!selected} onOpenChange={() => setSelected(null)}>
         <SheetContent className="sm:max-w-lg overflow-y-auto">
-          <SheetHeader><SheetTitle>Rental Details</SheetTitle></SheetHeader>
-          {selectedRental && (
+          <SheetHeader>
+            <SheetTitle>Rental Details</SheetTitle>
+          </SheetHeader>
+          {selected && (
             <div className="mt-6 space-y-1">
-              <DetailRow label="Rental Code" value={selectedRental.rentalCode} />
-              <DetailRow label="Phone Number" value={selectedRental.phoneNumber} />
-              <DetailRow label="Station" value={selectedRental.station} />
-              <DetailRow label="Machine" value={selectedRental.machine} />
-              <DetailRow label="Powerbank" value={selectedRental.powerbankId} />
-              <DetailRow label="Start Time" value={selectedRental.startTime} />
-              <DetailRow label="End Time" value={selectedRental.endTime || "—"} />
-              <DetailRow label="Duration" value={selectedRental.durationMinutes > 0 ? `${selectedRental.durationMinutes} minutes` : "—"} />
-              <DetailRow label="Total Amount" value={selectedRental.totalAmount > 0 ? `KES ${selectedRental.totalAmount}` : "—"} />
-              <DetailRow label="Deposit" value={`KES ${selectedRental.depositAmount}`} />
-              <DetailRow label="Deposit Refunded" value={selectedRental.depositRefunded ? "Yes" : "No"} />
-              <DetailRow label="Status" value={<StatusBadge status={selectedRental.status} />} />
+              <DetailRow label="Rental Code" value={selected.rental_code} />
+              <DetailRow label="Phone Number" value={selected.phone_number} />
+              <DetailRow
+                label="Station"
+                value={selected.station_name ?? stationName(selected.station_id)}
+              />
+              <DetailRow
+                label="Machine"
+                value={selected.machine_name ?? machineName(selected.machine_id)}
+              />
+              <DetailRow label="Powerbank" value={selected.powerbank_id} />
+              <DetailRow label="Start Time" value={formatDateTime(selected.start_time)} />
+              <DetailRow
+                label="End Time"
+                value={selected.end_time ? formatDateTime(selected.end_time) : "—"}
+              />
+              <DetailRow
+                label="Duration"
+                value={
+                  Number(selected.duration_minutes) > 0
+                    ? `${selected.duration_minutes} minutes`
+                    : "—"
+                }
+              />
+              <DetailRow
+                label="Total Amount"
+                value={Number(selected.total_amount) > 0 ? formatKsh(selected.total_amount) : "—"}
+              />
+              <DetailRow label="Deposit" value={formatKsh(selected.deposit_amount)} />
+              <DetailRow
+                label="Deposit Refunded"
+                value={selected.deposit_refunded ? "Yes" : "No"}
+              />
+              <DetailRow label="Status" value={<StatusBadge status={selected.status} />} />
+              <div className="pt-4">
+                <Button onClick={(e) => openSms(selected, e)} className="w-full">
+                  <MessageSquare className="h-4 w-4 mr-2" />
+                  Send SMS to {selected.phone_number}
+                </Button>
+              </div>
             </div>
           )}
         </SheetContent>
       </Sheet>
+
+      {/* SMS Dialog */}
+      <Dialog open={!!smsTarget} onOpenChange={(open) => !open && setSmsTarget(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Send SMS</DialogTitle>
+            <DialogDescription>
+              {smsTarget && (
+                <>
+                  Rental <span className="font-mono">{smsTarget.rental_code}</span>
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div>
+              <label className="text-sm font-medium text-foreground mb-1.5 block">
+                Phone Number
+              </label>
+              <Input
+                value={smsPhone}
+                onChange={(e) => setSmsPhone(e.target.value)}
+                placeholder="+2547XXXXXXXX"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-foreground mb-1.5 block">
+                Message{" "}
+                <span className="text-muted-foreground font-normal">({smsMessage.length}/160)</span>
+              </label>
+              <Textarea
+                value={smsMessage}
+                onChange={(e) => setSmsMessage(e.target.value)}
+                placeholder="Type your message..."
+                rows={5}
+                maxLength={480}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSmsTarget(null)} disabled={smsSending}>
+              Cancel
+            </Button>
+            <Button
+              onClick={sendSms}
+              disabled={smsSending || !smsPhone.trim() || !smsMessage.trim()}
+            >
+              <Send className="h-4 w-4 mr-2" />
+              {smsSending ? "Sending..." : "Send SMS"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

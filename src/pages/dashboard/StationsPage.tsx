@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -11,9 +11,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Switch } from "@/components/ui/switch";
 import StatusBadge from "@/components/StatusBadge";
-import { PageHeader, FilterBar, EmptyState, DetailRow } from "@/components/shared";
+import { PageHeader, FilterBar, EmptyState, DetailRow, TableSkeleton, FallbackBanner } from "@/components/shared";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { mockExtendedStations, mockExtendedMachines, ExtendedStation, ExtendedMachine } from "@/data/extendedMockData";
+import { useStations, useMachines } from "@/hooks/useDashboardData";
+import type { Station, Machine } from "@/types/dashboard";
 import { Plus, Eye, Pencil, Power, Wrench, MapPin, Cpu } from "lucide-react";
 import { toast } from "sonner";
 
@@ -38,12 +40,34 @@ type StationFormValues = z.infer<typeof stationSchema>;
 type MachineFormValues = z.infer<typeof machineSchema>;
 
 const StationsTab = () => {
-  const [stations, setStations] = useState(mockExtendedStations);
+  const stationsQ = useStations();
+  const [stations, setStations] = useState<ExtendedStation[]>(mockExtendedStations);
   const [search, setSearch] = useState("");
   const [filterCounty, setFilterCounty] = useState("all");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<ExtendedStation | null>(null);
   const [viewing, setViewing] = useState<ExtendedStation | null>(null);
+
+  useEffect(() => {
+    if (stationsQ.isLoading || stationsQ.isFallback) return;
+    const mapped: ExtendedStation[] = (stationsQ.data as Station[]).map((s) => ({
+      id: s.id,
+      name: s.name,
+      address: s.address,
+      county_name: s.county_name,
+      latitude: s.latitude,
+      longitude: s.longitude,
+      host_partner: s.host_partner_id ?? "—",
+      revenue_share_percent: s.revenue_share_percent,
+      open_hours: s.open_hours,
+      is_active: s.is_active,
+      machines_count: s.machines_count ?? 0,
+      features: s.features ?? [],
+      image_url: s.image_url,
+      created_at: s.created_at,
+    }));
+    setStations(mapped);
+  }, [stationsQ.data, stationsQ.isLoading, stationsQ.isFallback]);
 
   const form = useForm<StationFormValues>({ resolver: zodResolver(stationSchema), defaultValues: { name: "", address: "", county_name: "", host_partner: "", revenue_share_percent: 10, open_hours: "" } });
 
@@ -76,6 +100,7 @@ const StationsTab = () => {
 
   return (
     <div className="space-y-4">
+      {stationsQ.isFallback && !stationsQ.isLoading && <FallbackBanner onRetry={stationsQ.refetch} />}
       <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
         <FilterBar searchValue={search} onSearchChange={setSearch} searchPlaceholder="Search stations...">
           <Select value={filterCounty} onValueChange={setFilterCounty}>
@@ -88,6 +113,8 @@ const StationsTab = () => {
         </FilterBar>
         <Button onClick={openCreate} size="sm"><Plus className="h-4 w-4 mr-1" />Add Station</Button>
       </div>
+
+      {stationsQ.isLoading ? <TableSkeleton rows={6} columns={9} /> : (
 
       <Card>
         <div className="overflow-x-auto">
@@ -130,6 +157,7 @@ const StationsTab = () => {
           </table>
         </div>
       </Card>
+      )}
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-lg">
@@ -176,13 +204,35 @@ const StationsTab = () => {
 };
 
 const MachinesTab = () => {
-  const [machines, setMachines] = useState(mockExtendedMachines);
+  const machinesQ = useMachines();
+  const stationsQ = useStations();
+  const [machines, setMachines] = useState<ExtendedMachine[]>(mockExtendedMachines);
   const [search, setSearch] = useState("");
   const [filterStation, setFilterStation] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<ExtendedMachine | null>(null);
   const [viewing, setViewing] = useState<ExtendedMachine | null>(null);
+
+  useEffect(() => {
+    if (machinesQ.isLoading || machinesQ.isFallback) return;
+    const stationLookup = new Map((stationsQ.data as Station[]).map((s) => [s.id, s.name]));
+    const mapped: ExtendedMachine[] = (machinesQ.data as Machine[]).map((m) => ({
+      id: m.id,
+      name: m.name,
+      station: m.station_name ?? stationLookup.get(m.station_id) ?? "—",
+      station_id: m.station_id,
+      model: m.model,
+      qr_code: m.qr_code,
+      total_slots: m.total_slots,
+      available_slots: m.available_slots,
+      status: m.status,
+      is_active: m.is_active,
+      last_maintenance: m.last_maintenance ?? "—",
+      created_at: m.created_at,
+    }));
+    setMachines(mapped);
+  }, [machinesQ.data, machinesQ.isLoading, machinesQ.isFallback, stationsQ.data]);
 
   const form = useForm<MachineFormValues>({ resolver: zodResolver(machineSchema), defaultValues: { name: "", model: "", qr_code: "", station_id: "", total_slots: 8 } });
   const stationNames = [...new Set(machines.map((m) => m.station))];
@@ -214,6 +264,7 @@ const MachinesTab = () => {
 
   return (
     <div className="space-y-4">
+      {machinesQ.isFallback && !machinesQ.isLoading && <FallbackBanner onRetry={machinesQ.refetch} />}
       <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
         <FilterBar searchValue={search} onSearchChange={setSearch} searchPlaceholder="Search machines...">
           <Select value={filterStation} onValueChange={setFilterStation}>
@@ -237,6 +288,7 @@ const MachinesTab = () => {
         <Button onClick={openCreate} size="sm"><Plus className="h-4 w-4 mr-1" />Add Machine</Button>
       </div>
 
+      {machinesQ.isLoading ? <TableSkeleton rows={6} columns={10} /> : (
       <Card>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -281,6 +333,7 @@ const MachinesTab = () => {
           </table>
         </div>
       </Card>
+      )}
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-lg">

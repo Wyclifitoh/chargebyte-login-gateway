@@ -18,10 +18,13 @@ const MetricCard = ({ title, value, change, icon, prefix = "" }: MetricCardProps
       </div>
     </div>
     <p className="text-2xl font-bold text-foreground">
-      {prefix}{typeof value === "number" ? value.toLocaleString() : value}
+      {prefix}
+      {typeof value === "number" ? value.toLocaleString() : value}
     </p>
     {change !== undefined && (
-      <div className={`flex items-center gap-1 mt-1 text-xs font-medium ${change >= 0 ? "text-green-600" : "text-destructive"}`}>
+      <div
+        className={`flex items-center gap-1 mt-1 text-xs font-medium ${change >= 0 ? "text-green-600" : "text-destructive"}`}
+      >
         {change >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
         {Math.abs(change)}% vs last month
       </div>

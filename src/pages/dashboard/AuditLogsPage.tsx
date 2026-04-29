@@ -1,23 +1,46 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import StatusBadge from "@/components/StatusBadge";
-import { PageHeader, FilterBar, DetailRow, EmptyState } from "@/components/shared";
-import { mockAuditLogs, AuditLog } from "@/data/extendedMockData";
+import { PageHeader, FilterBar, DetailRow, EmptyState, FallbackBanner, TableSkeleton } from "@/components/shared";
+import { mockAuditLogs, AuditLog as ExtAuditLog } from "@/data/extendedMockData";
+import { useAuditLogs } from "@/hooks/useDashboardData";
+import { formatDateTime } from "@/lib/format";
+import type { AuditLog as BackendAuditLog } from "@/types/dashboard";
 import { Eye } from "lucide-react";
 
 const AuditLogsPage = () => {
+  const auditQ = useAuditLogs();
   const [search, setSearch] = useState("");
   const [filterAction, setFilterAction] = useState("all");
   const [filterTable, setFilterTable] = useState("all");
-  const [viewing, setViewing] = useState<AuditLog | null>(null);
+  const [viewing, setViewing] = useState<ExtAuditLog | null>(null);
+  const [logs, setLogs] = useState<ExtAuditLog[]>(mockAuditLogs);
 
-  const actions = [...new Set(mockAuditLogs.map((l) => l.action))];
-  const tables = [...new Set(mockAuditLogs.map((l) => l.table_name))];
+  useEffect(() => {
+    if (auditQ.isLoading || auditQ.isFallback) return;
+    const mapped: ExtAuditLog[] = (auditQ.data as BackendAuditLog[]).map((l) => ({
+      id: String(l.id),
+      date: formatDateTime(l.created_at),
+      user_id: l.user_id,
+      user_name: l.user_name ?? "—",
+      action: l.action,
+      table_name: l.table_name,
+      record_id: l.record_id,
+      ip_address: l.ip_address,
+      user_agent: l.user_agent,
+      old_values: l.old_values,
+      new_values: l.new_values,
+    }));
+    setLogs(mapped);
+  }, [auditQ.data, auditQ.isLoading, auditQ.isFallback]);
 
-  const filtered = mockAuditLogs.filter((l) => {
+  const actions = [...new Set(logs.map((l) => l.action))];
+  const tables = [...new Set(logs.map((l) => l.table_name))];
+
+  const filtered = logs.filter((l) => {
     const matchSearch = l.user_name.toLowerCase().includes(search.toLowerCase()) || l.record_id.toLowerCase().includes(search.toLowerCase());
     const matchAction = filterAction === "all" || l.action === filterAction;
     const matchTable = filterTable === "all" || l.table_name === filterTable;
@@ -37,23 +60,26 @@ const AuditLogsPage = () => {
     <div className="space-y-6">
       <PageHeader title="Audit Logs" description="Track all system changes and user actions" />
 
+      {auditQ.isFallback && !auditQ.isLoading && <FallbackBanner onRetry={auditQ.refetch} />}
+
       <FilterBar searchValue={search} onSearchChange={setSearch} searchPlaceholder="Search by user or record...">
         <Select value={filterAction} onValueChange={setFilterAction}>
-          <SelectTrigger className="w-[130px] h-9"><SelectValue placeholder="Action" /></SelectTrigger>
+          <SelectTrigger className="w-[130px] h-9"><SelectValue placeholder="Action Type" /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Actions</SelectItem>
+            <SelectItem value="all">All Action Types</SelectItem>
             {actions.map((a) => <SelectItem key={a} value={a}>{a}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={filterTable} onValueChange={setFilterTable}>
-          <SelectTrigger className="w-[160px] h-9"><SelectValue placeholder="Table" /></SelectTrigger>
+          <SelectTrigger className="w-[160px] h-9"><SelectValue placeholder="Entity Type" /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Tables</SelectItem>
+            <SelectItem value="all">All Entity Types</SelectItem>
             {tables.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
           </SelectContent>
         </Select>
       </FilterBar>
 
+      {auditQ.isLoading ? <TableSkeleton rows={6} columns={8} /> : (
       <Card>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -89,6 +115,7 @@ const AuditLogsPage = () => {
           </table>
         </div>
       </Card>
+      )}
 
       <Sheet open={!!viewing} onOpenChange={() => setViewing(null)}>
         <SheetContent className="sm:max-w-lg">
