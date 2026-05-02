@@ -18,6 +18,7 @@ import CampaignsPage from "@/pages/dashboard/CampaignsPage";
 import FormsPage from "@/pages/dashboard/FormsPage";
 import PartnerDashboardPage from "@/pages/dashboard/PartnerDashboardPage";
 import TransactionsPage from "@/pages/dashboard/TransactionsPage";
+import MpesaPage from "@/pages/dashboard/MpesaPage";
 import AuditLogsPage from "@/pages/dashboard/AuditLogsPage";
 import OperationsPage from "@/pages/dashboard/OperationsPage";
 import NotificationsPage from "@/pages/dashboard/NotificationsPage";
@@ -49,6 +50,7 @@ const App = () => (
             <Route path="/dashboard/forms" element={<DashboardRoute section="forms"><FormsPage /></DashboardRoute>} />
             <Route path="/dashboard/partner" element={<DashboardRoute section="partner"><PartnerDashboardPage /></DashboardRoute>} />
             <Route path="/dashboard/transactions" element={<DashboardRoute section="transactions"><TransactionsPage /></DashboardRoute>} />
+            <Route path="/dashboard/mpesa" element={<DashboardRoute section="mpesa"><MpesaPage /></DashboardRoute>} />
             <Route path="/dashboard/audit" element={<DashboardRoute section="audit"><AuditLogsPage /></DashboardRoute>} />
             <Route path="/dashboard/operations" element={<DashboardRoute section="operations"><OperationsPage /></DashboardRoute>} />
             <Route path="/dashboard/notifications" element={<DashboardRoute section="notifications"><NotificationsPage /></DashboardRoute>} />

@@ -198,6 +198,46 @@ export const api = {
     create: (data: unknown) => apiPost("/partners", data),
     update: (id: string, data: unknown) => apiPut(`/partners/${id}`, data),
     getPayouts: () => apiGet("/partners/payouts"),
+    assignStation: (data: unknown) => apiPost("/partners/assign-station", data),
+    unassignStation: (stationId: string) => apiDelete(`/partners/stations/${stationId}`),
+    assignMachine: (data: unknown) => apiPost("/partners/assign-machine", data),
+    unassignMachine: (partnerId: string, machineId: string) =>
+      apiDelete(`/partners/${partnerId}/machines/${machineId}`),
+  },
+
+  campaigns: {
+    getAll: () => apiGet("/campaigns"),
+    getById: (id: string) => apiGet(`/campaigns/${id}`),
+    create: (data: unknown) => apiPost("/campaigns", data),
+    update: (id: string, data: unknown) => apiPut(`/campaigns/${id}`, data),
+    delete: (id: string) => apiDelete(`/campaigns/${id}`),
+  },
+
+  adClients: {
+    getAll: () => apiGet("/advertising-clients"),
+    getById: (id: string) => apiGet(`/advertising-clients/${id}`),
+    create: (data: unknown) => apiPost("/advertising-clients", data),
+    update: (id: string, data: unknown) => apiPut(`/advertising-clients/${id}`, data),
+    delete: (id: string) => apiDelete(`/advertising-clients/${id}`),
+  },
+
+  mpesa: {
+    listIncoming: (params?: Record<string, string | number | undefined>) =>
+      apiGet(`/mpesa/incoming${buildQS(params)}`),
+    listOutgoing: (params?: Record<string, string | number | undefined>) =>
+      apiGet(`/mpesa/outgoing${buildQS(params)}`),
+    stkPush: (data: unknown) => apiPost("/mpesa/stk-push", data),
+    b2c: (data: unknown) => apiPost("/mpesa/b2c", data),
+    b2b: (data: unknown) => apiPost("/mpesa/b2b", data),
+    refreshBalance: () => apiPost("/mpesa/balance/refresh", {}),
+    getLatestBalance: () => apiGet("/mpesa/balance/latest"),
+  },
+
+  profile: {
+    setPin: (data: { current_password: string; pin: string }) =>
+      apiPost("/users/me/pin", data),
+    changePin: (data: { current_pin: string; new_pin: string }) =>
+      apiPut("/users/me/pin", data),
   },
 
   events: {

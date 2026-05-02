@@ -10,3 +10,4 @@ export { default as DetailRow } from "./DetailRow";
 export { default as TableSkeleton } from "./TableSkeleton";
 export { default as FallbackBanner } from "./FallbackBanner";
 export { default as DateRangeFilter } from "./DateRangeFilter";
+export { default as PinDialog } from "./PinDialog";

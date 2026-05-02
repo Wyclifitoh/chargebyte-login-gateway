@@ -2,10 +2,11 @@ import { ReactNode } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { ROLE_NAV_ACCESS, ROLE_LABELS } from "@/types/dashboard";
 import { useNavigate, useLocation } from "react-router-dom";
-import { LogOut, ChevronDown, Zap, LayoutDashboard, Car, Cpu, MapPin, DollarSign, Users, Megaphone, ClipboardList, Menu, X, CreditCard, Shield, Briefcase, Bell } from "lucide-react";
+import { LogOut, ChevronDown, Zap, LayoutDashboard, Car, Cpu, MapPin, DollarSign, Users, Megaphone, ClipboardList, Menu, X, CreditCard, Shield, Briefcase, Bell, KeyRound, Smartphone } from "lucide-react";
 import { useState } from "react";
 import logo from "@/assets/chargebyte-logo.png";
 import { mockNotifications } from "@/data/extendedMockData";
+import SetPinDialog from "@/components/SetPinDialog";
 
 const NAV_ITEMS = [
   { id: "overview", label: "Overview", icon: LayoutDashboard, path: "/dashboard" },
@@ -17,7 +18,8 @@ const NAV_ITEMS = [
   { id: "forms", label: "Forms", icon: ClipboardList, path: "/dashboard/forms" },
   { id: "campaigns", label: "Campaigns", icon: Megaphone, path: "/dashboard/campaigns" },
   { id: "partner", label: "My Machines", icon: Cpu, path: "/dashboard/partner" },
-  { id: "transactions", label: "M-Pesa", icon: CreditCard, path: "/dashboard/transactions" },
+  { id: "transactions", label: "Transactions", icon: CreditCard, path: "/dashboard/transactions" },
+  { id: "mpesa", label: "M-Pesa", icon: Smartphone, path: "/dashboard/mpesa" },
   { id: "audit", label: "Audit Logs", icon: Shield, path: "/dashboard/audit" },
   { id: "operations", label: "Operations", icon: Briefcase, path: "/dashboard/operations" },
   { id: "notifications", label: "Alerts", icon: Bell, path: "/dashboard/notifications" },
@@ -29,6 +31,7 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [pinOpen, setPinOpen] = useState(false);
 
   if (!user) return null;
 
@@ -81,7 +84,16 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
                 <ChevronDown className="h-4 w-4 text-muted-foreground hidden sm:block" />
               </button>
               {profileOpen && (
-                <div className="absolute right-0 top-full mt-1 w-48 rounded-lg border border-border bg-card shadow-lg py-1 z-50">
+                <div className="absolute right-0 top-full mt-1 w-56 rounded-lg border border-border bg-card shadow-lg py-1 z-50">
+                  {user.role === "super_admin" && (
+                    <button
+                      onClick={() => { setPinOpen(true); setProfileOpen(false); }}
+                      className="flex w-full items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-muted transition-colors"
+                    >
+                      <KeyRound className="h-4 w-4" />
+                      Transaction PIN
+                    </button>
+                  )}
                   <button
                     onClick={handleLogout}
                     className="flex w-full items-center gap-2 px-4 py-2 text-sm text-destructive hover:bg-muted transition-colors"
@@ -153,6 +165,8 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
       <main className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6">
         {children}
       </main>
+
+      <SetPinDialog open={pinOpen} onOpenChange={setPinOpen} />
     </div>
   );
 };

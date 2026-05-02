@@ -15,8 +15,9 @@ import { PageHeader, FilterBar, EmptyState, DetailRow, TableSkeleton, FallbackBa
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { mockExtendedStations, mockExtendedMachines, ExtendedStation, ExtendedMachine } from "@/data/extendedMockData";
 import { useStations, useMachines } from "@/hooks/useDashboardData";
+import { api } from "@/services/api";
 import type { Station, Machine } from "@/types/dashboard";
-import { Plus, Eye, Pencil, Power, Wrench, MapPin, Cpu } from "lucide-react";
+import { Plus, Eye, Pencil, Power, Wrench, MapPin, Cpu, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 const stationSchema = z.object({
@@ -81,21 +82,37 @@ const StationsTab = () => {
   const openCreate = () => { setEditing(null); form.reset({ name: "", address: "", county_name: "", host_partner: "", revenue_share_percent: 10, open_hours: "" }); setDialogOpen(true); };
   const openEdit = (s: ExtendedStation) => { setEditing(s); form.reset({ name: s.name, address: s.address, county_name: s.county_name, host_partner: s.host_partner, revenue_share_percent: s.revenue_share_percent, open_hours: s.open_hours }); setDialogOpen(true); };
 
-  const onSubmit = (data: StationFormValues) => {
-    if (editing) {
-      setStations((prev) => prev.map((s) => s.id === editing.id ? { ...s, ...data } : s));
-      toast.success("Station updated");
-    } else {
-      const newStation: ExtendedStation = { name: data.name, address: data.address, county_name: data.county_name, host_partner: data.host_partner, revenue_share_percent: data.revenue_share_percent, open_hours: data.open_hours, id: `S${String(stations.length + 1).padStart(3, "0")}`, latitude: 0, longitude: 0, is_active: true, machines_count: 0, features: [], image_url: "", created_at: new Date().toISOString().split("T")[0] };
-      setStations((prev) => [...prev, newStation]);
-      toast.success("Station created");
+  const onSubmit = async (data: StationFormValues) => {
+    try {
+      const payload = {
+        name: data.name,
+        address: data.address,
+        county_name: data.county_name,
+        host_partner_id: data.host_partner || null,
+        revenue_share_percent: data.revenue_share_percent,
+        open_hours: data.open_hours,
+      };
+      const res = editing ? await api.stations.update(editing.id, payload) : await api.stations.create(payload);
+      if (!res.success) throw new Error(res.error || "Failed");
+      toast.success(editing ? "Station updated" : "Station created");
+      setDialogOpen(false);
+      stationsQ.refetch();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Save failed");
     }
-    setDialogOpen(false);
   };
 
-  const toggleActive = (id: string) => {
-    setStations((prev) => prev.map((s) => s.id === id ? { ...s, is_active: !s.is_active } : s));
-    toast.success("Station status toggled");
+  const toggleActive = async (s: ExtendedStation) => {
+    const res = await api.stations.update(s.id, { is_active: !s.is_active });
+    if (res.success) { toast.success("Station status toggled"); stationsQ.refetch(); }
+    else toast.error(res.error || "Failed");
+  };
+
+  const remove = async (id: string) => {
+    if (!confirm("Delete this station?")) return;
+    const res = await api.stations.delete(id);
+    if (res.success) { toast.success("Station deleted"); stationsQ.refetch(); }
+    else toast.error(res.error || "Failed");
   };
 
   return (
@@ -147,7 +164,8 @@ const StationsTab = () => {
                     <div className="flex gap-1">
                       <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setViewing(s)}><Eye className="h-3.5 w-3.5" /></Button>
                       <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(s)}><Pencil className="h-3.5 w-3.5" /></Button>
-                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => toggleActive(s.id)}><Power className="h-3.5 w-3.5" /></Button>
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => toggleActive(s)}><Power className="h-3.5 w-3.5" /></Button>
+                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => remove(s.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
                     </div>
                   </td>
                 </tr>
@@ -246,21 +264,32 @@ const MachinesTab = () => {
   const openCreate = () => { setEditing(null); form.reset({ name: "", model: "", qr_code: "", station_id: "", total_slots: 8 }); setDialogOpen(true); };
   const openEdit = (m: ExtendedMachine) => { setEditing(m); form.reset({ name: m.name, model: m.model, qr_code: m.qr_code, station_id: m.station_id, total_slots: m.total_slots }); setDialogOpen(true); };
 
-  const onSubmit = (data: MachineFormValues) => {
-    const station = mockExtendedStations.find((s) => s.id === data.station_id);
-    if (editing) {
-      setMachines((prev) => prev.map((m) => m.id === editing.id ? { ...m, ...data, station: station?.name || m.station } : m));
-      toast.success("Machine updated");
-    } else {
-      const newMachine: ExtendedMachine = { name: data.name, model: data.model, qr_code: data.qr_code, station_id: data.station_id, total_slots: data.total_slots, id: `CB-${String(machines.length + 30).padStart(3, "0")}`, station: station?.name || "", available_slots: data.total_slots, status: "online", is_active: true, last_maintenance: new Date().toISOString().split("T")[0], created_at: new Date().toISOString().split("T")[0] };
-      setMachines((prev) => [...prev, newMachine]);
-      toast.success("Machine created");
-    }
-    setDialogOpen(false);
+  const onSubmit = async (data: MachineFormValues) => {
+    try {
+      const res = editing ? await api.machines.update(editing.id, data) : await api.machines.create(data);
+      if (!res.success) throw new Error(res.error || "Failed");
+      toast.success(editing ? "Machine updated" : "Machine created");
+      setDialogOpen(false);
+      machinesQ.refetch();
+    } catch (e) { toast.error(e instanceof Error ? e.message : "Save failed"); }
   };
 
-  const toggleActive = (id: string) => { setMachines((prev) => prev.map((m) => m.id === id ? { ...m, is_active: !m.is_active } : m)); toast.success("Machine status toggled"); };
-  const setMaintenance = (id: string) => { setMachines((prev) => prev.map((m) => m.id === id ? { ...m, status: "maintenance" as const, last_maintenance: new Date().toISOString().split("T")[0] } : m)); toast.success("Machine set to maintenance"); };
+  const toggleActive = async (m: ExtendedMachine) => {
+    const res = await api.machines.update(m.id, { is_active: !m.is_active });
+    if (res.success) { toast.success("Toggled"); machinesQ.refetch(); }
+    else toast.error(res.error || "Failed");
+  };
+  const setMaintenance = async (id: string) => {
+    const res = await api.machines.update(id, { status: "maintenance", last_maintenance: new Date().toISOString().split("T")[0] });
+    if (res.success) { toast.success("Set to maintenance"); machinesQ.refetch(); }
+    else toast.error(res.error || "Failed");
+  };
+  const removeMachine = async (id: string) => {
+    if (!confirm("Delete this machine?")) return;
+    const res = await api.machines.delete(id);
+    if (res.success) { toast.success("Deleted"); machinesQ.refetch(); }
+    else toast.error(res.error || "Failed");
+  };
 
   return (
     <div className="space-y-4">
@@ -323,7 +352,8 @@ const MachinesTab = () => {
                       <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setViewing(m)}><Eye className="h-3.5 w-3.5" /></Button>
                       <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(m)}><Pencil className="h-3.5 w-3.5" /></Button>
                       <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setMaintenance(m.id)}><Wrench className="h-3.5 w-3.5" /></Button>
-                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => toggleActive(m.id)}><Power className="h-3.5 w-3.5" /></Button>
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => toggleActive(m)}><Power className="h-3.5 w-3.5" /></Button>
+                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => removeMachine(m.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
                     </div>
                   </td>
                 </tr>

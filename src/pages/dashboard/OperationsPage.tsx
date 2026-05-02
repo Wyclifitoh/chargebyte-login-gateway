@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 import { PageHeader, FilterBar, EmptyState } from "@/components/shared";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -24,8 +25,8 @@ const leadSchema = z.object({
   email: z.string().trim().email("Valid email required").max(255),
   phone: z.string().trim().min(1, "Required").max(20),
   source: z.string().min(1, "Required"),
-  station: z.string().min(1, "Required"),
-  owner: z.string().trim().min(1, "Required").max(100),
+  station: z.string().optional().or(z.literal("")),
+  owner: z.string().trim().min(1, "Staff member is required").max(100),
   follow_up_date: z.string().min(1, "Required"),
   notes: z.string().max(500).optional(),
 });
@@ -51,12 +52,17 @@ type ReportFormValues = z.infer<typeof reportSchema>;
 type PlanFormValues = z.infer<typeof planSchema>;
 
 const LeadsTab = () => {
+  const { user } = useAuth();
+  const isStaff = user?.role === "staff";
   const [leads, setLeads] = useState(mockStaffLeads);
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [dialogOpen, setDialogOpen] = useState(false);
 
-  const form = useForm<LeadFormValues>({ resolver: zodResolver(leadSchema), defaultValues: { name: "", email: "", phone: "", source: "", station: "", owner: "", follow_up_date: "", notes: "" } });
+  const form = useForm<LeadFormValues>({
+    resolver: zodResolver(leadSchema),
+    defaultValues: { name: "", email: "", phone: "", source: "", station: "", owner: isStaff ? user!.name : "", follow_up_date: "", notes: "" },
+  });
 
   const filtered = leads.filter((l) => {
     const matchSearch = l.name.toLowerCase().includes(search.toLowerCase()) || l.email.toLowerCase().includes(search.toLowerCase());
@@ -65,10 +71,10 @@ const LeadsTab = () => {
   });
 
   const onSubmit = (data: LeadFormValues) => {
-    const newLead: StaffLead = { name: data.name, email: data.email, phone: data.phone, source: data.source, station: data.station, owner: data.owner, follow_up_date: data.follow_up_date, id: `SL${String(leads.length + 1).padStart(3, "0")}`, status: "new", notes: data.notes || "", created_at: new Date().toISOString().split("T")[0] };
+    const newLead: StaffLead = { name: data.name, email: data.email, phone: data.phone, source: data.source, station: data.station || "—", owner: data.owner, follow_up_date: data.follow_up_date, id: `SL${String(leads.length + 1).padStart(3, "0")}`, status: "new", notes: data.notes || "", created_at: new Date().toISOString().split("T")[0] };
     setLeads((prev) => [newLead, ...prev]);
     setDialogOpen(false);
-    form.reset();
+    form.reset({ name: "", email: "", phone: "", source: "", station: "", owner: isStaff ? user!.name : "", follow_up_date: "", notes: "" });
     toast.success("Lead added");
   };
 
@@ -147,12 +153,18 @@ const LeadsTab = () => {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <FormField control={form.control} name="station" render={({ field }) => (
-                  <FormItem><FormLabel>Station</FormLabel><FormControl>
-                    <Select onValueChange={field.onChange} value={field.value}><SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+                  <FormItem><FormLabel>Station <span className="text-muted-foreground text-xs">(optional)</span></FormLabel><FormControl>
+                    <Select onValueChange={field.onChange} value={field.value}><SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
                       <SelectContent>{mockExtendedStations.map((s) => <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>)}</SelectContent>
                     </Select>
                   </FormControl><FormMessage /></FormItem>)} />
-                <FormField control={form.control} name="owner" render={({ field }) => (<FormItem><FormLabel>Lead Owner</FormLabel><FormControl><Input placeholder="Assigned to" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                <FormField control={form.control} name="owner" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Staff Member <span className="text-destructive">*</span></FormLabel>
+                    <FormControl><Input placeholder="Assigned staff" {...field} disabled={isStaff} /></FormControl>
+                    {isStaff && <p className="text-xs text-muted-foreground">Auto-assigned to you</p>}
+                    <FormMessage />
+                  </FormItem>)} />
               </div>
               <FormField control={form.control} name="follow_up_date" render={({ field }) => (<FormItem><FormLabel>Follow-up Date</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>)} />
               <FormField control={form.control} name="notes" render={({ field }) => (<FormItem><FormLabel>Notes</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)} />

@@ -232,8 +232,55 @@ export function usePartners() {
 
 export function useCampaigns() {
   return useFetchWithFallback<Campaign[]>(
-    () => api.events.getAll() as Promise<ApiResponse<Campaign[]>>,
+    () => api.campaigns.getAll() as Promise<ApiResponse<Campaign[]>>,
     [], (raw) => toArray<Campaign>(raw), "campaigns",
+  );
+}
+
+export interface AdClient {
+  id: string; name: string; contact_email?: string; contact_phone?: string;
+  industry?: string; status?: string; created_at?: string;
+}
+export function useAdClients() {
+  return useFetchWithFallback<AdClient[]>(
+    () => api.adClients.getAll() as Promise<ApiResponse<AdClient[]>>,
+    [], (raw) => toArray<AdClient>(raw), "advertising clients",
+  );
+}
+
+export interface MpesaIncomingRow {
+  id: string; created_at: string; transaction_type: string;
+  amount: number; phone_number: string; mpesa_receipt: string | null; status: string;
+}
+export function useMpesaIncoming(params: Record<string, string | number | undefined> = { page: 1, limit: 50 }) {
+  const key = JSON.stringify(params);
+  return useFetchWithFallback<MpesaIncomingRow[]>(
+    () => api.mpesa.listIncoming(params) as Promise<ApiResponse<MpesaIncomingRow[]>>,
+    [], (raw) => toArray<MpesaIncomingRow>(raw), "incoming payments", key,
+  );
+}
+
+export interface MpesaOutgoingRow {
+  id: string; payment_type: "B2C" | "B2B"; command_id: string;
+  amount: number; party_b: string; remarks: string;
+  status: string; mpesa_receipt: string | null; result_desc: string | null;
+  initiated_by_name: string | null; created_at: string;
+}
+export function useMpesaOutgoing(params: Record<string, string | number | undefined> = { page: 1, limit: 50 }) {
+  const key = JSON.stringify(params);
+  return useFetchWithFallback<MpesaOutgoingRow[]>(
+    () => api.mpesa.listOutgoing(params) as Promise<ApiResponse<MpesaOutgoingRow[]>>,
+    [], (raw) => toArray<MpesaOutgoingRow>(raw), "outgoing payments", key,
+  );
+}
+
+export interface MpesaBalance {
+  shortcode: string; account_type: string; balance: number; currency: string; fetched_at: string;
+}
+export function useMpesaBalance() {
+  return useFetchWithFallback<MpesaBalance | null>(
+    () => api.mpesa.getLatestBalance() as Promise<ApiResponse<MpesaBalance | null>>,
+    null, (raw) => (raw as MpesaBalance | null) ?? null, "M-Pesa balance",
   );
 }
 
