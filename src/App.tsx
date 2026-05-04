@@ -22,6 +22,8 @@ import MpesaPage from "@/pages/dashboard/MpesaPage";
 import AuditLogsPage from "@/pages/dashboard/AuditLogsPage";
 import OperationsPage from "@/pages/dashboard/OperationsPage";
 import NotificationsPage from "@/pages/dashboard/NotificationsPage";
+import PartnersPage from "@/pages/dashboard/PartnersPage";
+import AdClientsPage from "@/pages/dashboard/AdClientsPage";
 
 const queryClient = new QueryClient();
 
@@ -49,6 +51,8 @@ const App = () => (
             <Route path="/dashboard/campaigns" element={<DashboardRoute section="campaigns"><CampaignsPage /></DashboardRoute>} />
             <Route path="/dashboard/forms" element={<DashboardRoute section="forms"><FormsPage /></DashboardRoute>} />
             <Route path="/dashboard/partner" element={<DashboardRoute section="partner"><PartnerDashboardPage /></DashboardRoute>} />
+            <Route path="/dashboard/partners" element={<DashboardRoute section="partners"><PartnersPage /></DashboardRoute>} />
+            <Route path="/dashboard/adclients" element={<DashboardRoute section="adclients"><AdClientsPage /></DashboardRoute>} />
             <Route path="/dashboard/transactions" element={<DashboardRoute section="transactions"><TransactionsPage /></DashboardRoute>} />
             <Route path="/dashboard/mpesa" element={<DashboardRoute section="mpesa"><MpesaPage /></DashboardRoute>} />
             <Route path="/dashboard/audit" element={<DashboardRoute section="audit"><AuditLogsPage /></DashboardRoute>} />

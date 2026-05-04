@@ -31,7 +31,7 @@ export const ROLE_DASHBOARD_PATHS: Record<UserRole, string> = {
 
 // Which nav items each role can see
 export const ROLE_NAV_ACCESS: Record<UserRole, string[]> = {
-  super_admin: ["overview", "rentals", "machines", "stations", "revenue", "users", "forms", "campaigns", "transactions", "mpesa", "audit", "operations", "notifications", "partner"],
+  super_admin: ["overview", "rentals", "machines", "stations", "revenue", "users", "partners", "adclients", "forms", "campaigns", "transactions", "mpesa", "audit", "operations", "notifications"],
   staff: ["overview", "rentals", "machines", "forms", "operations", "notifications"],
   location_partner: ["overview", "partner", "revenue", "notifications"],
   funding_partner: ["overview", "partner", "revenue", "notifications"],

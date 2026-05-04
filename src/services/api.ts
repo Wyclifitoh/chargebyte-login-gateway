@@ -274,6 +274,19 @@ export const api = {
     resolve: (id: string) => apiPut(`/notifications/${id}/resolve`, {}),
     create: (data: unknown) => apiPost("/notifications", data),
   },
+
+  operations: {
+    getLeads: (params?: Record<string, string | number | undefined>) =>
+      apiGet(`/operations/leads${buildQS(params)}`),
+    createLead: (data: unknown) => apiPost("/operations/leads", data),
+    updateLead: (id: string, data: unknown) => apiPut(`/operations/leads/${id}`, data),
+    getReports: (params?: Record<string, string | number | undefined>) =>
+      apiGet(`/operations/reports${buildQS(params)}`),
+    createReport: (data: unknown) => apiPost("/operations/reports", data),
+    getDailyPlans: () => apiGet("/operations/daily-plans"),
+    createDailyPlan: (data: unknown) => apiPost("/operations/daily-plans", data),
+    toggleDailyPlan: (id: string) => apiPost(`/operations/daily-plans/${id}/toggle`, {}),
+  },
 };
 
 export default api;

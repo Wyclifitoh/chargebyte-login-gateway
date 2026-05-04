@@ -15,6 +15,8 @@ const NAV_ITEMS = [
   { id: "stations", label: "Stations", icon: MapPin, path: "/dashboard/stations" },
   { id: "revenue", label: "Revenue", icon: DollarSign, path: "/dashboard/revenue" },
   { id: "users", label: "Users", icon: Users, path: "/dashboard/users" },
+  { id: "partners", label: "Partners", icon: Briefcase, path: "/dashboard/partners" },
+  { id: "adclients", label: "Ad Clients", icon: Megaphone, path: "/dashboard/adclients" },
   { id: "forms", label: "Forms", icon: ClipboardList, path: "/dashboard/forms" },
   { id: "campaigns", label: "Campaigns", icon: Megaphone, path: "/dashboard/campaigns" },
   { id: "partner", label: "My Machines", icon: Cpu, path: "/dashboard/partner" },

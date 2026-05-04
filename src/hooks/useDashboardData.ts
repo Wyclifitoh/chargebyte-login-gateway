@@ -240,11 +240,47 @@ export function useCampaigns() {
 export interface AdClient {
   id: string; name: string; contact_email?: string; contact_phone?: string;
   industry?: string; status?: string; created_at?: string;
+  user_id?: string;
 }
 export function useAdClients() {
   return useFetchWithFallback<AdClient[]>(
     () => api.adClients.getAll() as Promise<ApiResponse<AdClient[]>>,
     [], (raw) => toArray<AdClient>(raw), "advertising clients",
+  );
+}
+
+// Operations hooks
+export interface OpsLead {
+  id: string; name: string; email?: string; phone?: string; source?: string;
+  station_id?: string; station_name?: string; status: string; notes?: string;
+  follow_up_date?: string; created_at: string;
+}
+export function useOpsLeads(params: Record<string, string | number | undefined> = {}) {
+  const key = JSON.stringify(params);
+  return useFetchWithFallback<OpsLead[]>(
+    () => api.operations.getLeads(params) as Promise<ApiResponse<OpsLead[]>>,
+    [], (raw) => toArray<OpsLead>(raw), "leads", key,
+  );
+}
+export interface OpsReport {
+  id: string; title: string; type: string; station_id?: string; station_name?: string;
+  submitted_by_name?: string; summary?: string; status: string; created_at: string;
+}
+export function useOpsReports(params: Record<string, string | number | undefined> = {}) {
+  const key = JSON.stringify(params);
+  return useFetchWithFallback<OpsReport[]>(
+    () => api.operations.getReports(params) as Promise<ApiResponse<OpsReport[]>>,
+    [], (raw) => toArray<OpsReport>(raw), "reports", key,
+  );
+}
+export interface OpsDailyPlan {
+  id: string; title: string; description?: string; priority: string;
+  deadline?: string; is_completed: number | boolean; created_at: string;
+}
+export function useOpsDailyPlans() {
+  return useFetchWithFallback<OpsDailyPlan[]>(
+    () => api.operations.getDailyPlans() as Promise<ApiResponse<OpsDailyPlan[]>>,
+    [], (raw) => toArray<OpsDailyPlan>(raw), "daily plans",
   );
 }
 
