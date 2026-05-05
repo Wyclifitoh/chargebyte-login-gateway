@@ -10,7 +10,9 @@ import {
   Coins,
   Timer,
   Send,
+  Download,
 } from "lucide-react";
+
 import {
   Select,
   SelectContent,
@@ -92,6 +94,7 @@ const RentalsPage = () => {
   const [smsPhone, setSmsPhone] = useState("");
   const [smsMessage, setSmsMessage] = useState("");
   const [smsSending, setSmsSending] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   const { data: stations } = useStations();
   const { data: machines } = useMachines();
@@ -181,6 +184,27 @@ const RentalsPage = () => {
     setSmsMessage(`Hi, regarding your rental ${r.rental_code}: `);
   };
 
+  const exportExcel = async () => {
+    setExporting(true);
+    try {
+      const blob = await api.rentals.downloadXlsx(filterParams);
+      const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `rentals_${period}_${stamp}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      toast.success("Export downloaded");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Export failed");
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const sendSms = async () => {
     if (!smsPhone.trim() || !smsMessage.trim()) {
       toast.error("Phone and message are required");
@@ -224,12 +248,24 @@ const RentalsPage = () => {
             })
           }
         />
-        <div className="text-sm text-muted-foreground">
-          {total > 0 && (
-            <>
-              Showing {rentals.length} of {total} rentals
-            </>
-          )}
+        <div className="flex items-center gap-3">
+          <div className="text-sm text-muted-foreground">
+            {total > 0 && (
+              <>
+                Showing {rentals.length} of {total} rentals
+              </>
+            )}
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={exportExcel}
+            disabled={exporting || isLoading}
+            className="h-9"
+          >
+            <Download className="h-4 w-4 mr-1.5" />
+            {exporting ? "Exporting…" : "Export Excel"}
+          </Button>
         </div>
       </div>
 

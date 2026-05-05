@@ -151,6 +151,16 @@ export const api = {
       apiGet(`/rentals/summary${buildQS(params)}`),
     sendSms: (data: { phone_number: string; message: string; rental_id?: string }) =>
       apiPost("/rentals/sms", data),
+    exportXlsxUrl: (params?: Record<string, string | number | undefined>) =>
+      `${API_BASE_URL}/rentals/export${buildQS(params)}`,
+    downloadXlsx: async (params?: Record<string, string | number | undefined>) => {
+      const token = tokenStore.getAccessToken();
+      const res = await fetch(`${API_BASE_URL}/rentals/export${buildQS(params)}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) throw new Error(`Export failed (${res.status})`);
+      return res.blob();
+    },
   },
 
   machines: {

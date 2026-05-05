@@ -24,13 +24,13 @@ import { useAuth } from "@/contexts/AuthContext";
 import { api } from "@/services/api";
 import { ROLE_LABELS, type UserRole } from "@/types/dashboard";
 
-const ROLES: UserRole[] = ["super_admin", "staff", "location_partner", "funding_partner", "ad_client"];
+const ROLES: UserRole[] = ["super_admin", "admin", "staff", "location_partner", "funding_partner", "ad_client"];
 
 const userSchema = z.object({
   name: z.string().trim().min(1, "Required").max(100),
   email: z.string().trim().email("Valid email required"),
   phone: z.string().trim().max(20).optional().or(z.literal("")),
-  role: z.enum(["super_admin", "staff", "location_partner", "funding_partner", "ad_client"]),
+  role: z.enum(["super_admin", "admin", "staff", "location_partner", "funding_partner", "ad_client"]),
   password: z.string().min(6, "Min 6 chars").optional().or(z.literal("")),
 });
 type UserFormValues = z.infer<typeof userSchema>;

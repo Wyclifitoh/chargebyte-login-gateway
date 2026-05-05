@@ -49,7 +49,7 @@ interface CampaignRow {
 
 const CampaignsPage = () => {
   const { user } = useAuth();
-  const isAdmin = user?.role === "super_admin";
+  const isAdmin = user?.role === "super_admin" || user?.role === "admin";
   const campaignsQ = useCampaigns();
   const stationsQ = useStations();
   const clientsQ = useAdClients();

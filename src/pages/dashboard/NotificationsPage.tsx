@@ -45,7 +45,7 @@ const NotificationsPage = () => {
       type: "system",
       related_entity: undefined,
       read: Boolean(n.resolved),
-      roles: ["super_admin", "staff", "location_partner", "funding_partner", "ad_client", "system"],
+      roles: ["super_admin", "admin", "staff", "location_partner", "funding_partner", "ad_client", "system"],
     }));
     setNotifications(mapped);
   }, [notifQ.data, notifQ.isLoading, notifQ.isFallback]);

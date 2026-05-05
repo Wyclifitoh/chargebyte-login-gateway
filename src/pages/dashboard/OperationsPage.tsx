@@ -94,7 +94,7 @@ const LeadsTab = () => {
   };
 
   const staffUsers = (usersQ.data as Array<{ id: string; name: string; role: string }>)
-    .filter((u) => ["staff", "super_admin"].includes(u.role));
+    .filter((u) => ["staff", "admin", "super_admin"].includes(u.role));
 
   return (
     <div className="space-y-4">

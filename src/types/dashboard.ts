@@ -1,4 +1,11 @@
-export type UserRole = "super_admin" | "staff" | "location_partner" | "funding_partner" | "ad_client" | "system";
+export type UserRole =
+  | "super_admin"
+  | "admin"
+  | "staff"
+  | "location_partner"
+  | "funding_partner"
+  | "ad_client"
+  | "system";
 
 export interface User {
   id: string;
@@ -13,6 +20,7 @@ export interface User {
 
 export const ROLE_LABELS: Record<UserRole, string> = {
   super_admin: "Super Admin",
+  admin: "Admin",
   staff: "Staff",
   location_partner: "Location Partner",
   funding_partner: "Funding Partner",
@@ -22,6 +30,7 @@ export const ROLE_LABELS: Record<UserRole, string> = {
 
 export const ROLE_DASHBOARD_PATHS: Record<UserRole, string> = {
   super_admin: "/dashboard",
+  admin: "/dashboard",
   staff: "/dashboard",
   location_partner: "/dashboard",
   funding_partner: "/dashboard",
@@ -32,6 +41,7 @@ export const ROLE_DASHBOARD_PATHS: Record<UserRole, string> = {
 // Which nav items each role can see
 export const ROLE_NAV_ACCESS: Record<UserRole, string[]> = {
   super_admin: ["overview", "rentals", "machines", "stations", "revenue", "users", "partners", "adclients", "forms", "campaigns", "transactions", "mpesa", "audit", "operations", "notifications"],
+  admin: ["overview", "rentals", "machines", "stations", "revenue", "users", "partners", "adclients", "forms", "campaigns", "transactions", "operations", "notifications"],
   staff: ["overview", "rentals", "machines", "forms", "operations", "notifications"],
   location_partner: ["overview", "partner", "revenue", "notifications"],
   funding_partner: ["overview", "partner", "revenue", "notifications"],
