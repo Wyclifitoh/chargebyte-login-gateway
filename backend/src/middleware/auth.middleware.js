@@ -1,45 +1,51 @@
-const jwt = require('jsonwebtoken');
-const db = require('../config/database');
+const jwt = require("jsonwebtoken");
+const db = require("../config/database");
 
 // Verify JWT token
 const authenticate = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ success: false, error: 'Access token required' });
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return res
+        .status(401)
+        .json({ success: false, error: "Access token required" });
     }
 
-    const token = authHeader.split(' ')[1];
+    const token = authHeader.split(" ")[1];
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
     const [users] = await db.query(
-      `SELECT u.id, u.name, u.email, u.is_active, ur.role 
-       FROM users u 
-       JOIN user_roles ur ON u.id = ur.user_id 
+      `SELECT u.id, u.full_name as name, u.email, u.is_active, u.role 
+       FROM system_users u   
        WHERE u.id = ? AND u.is_active = 1`,
-      [decoded.userId]
+      [decoded.userId],
     );
 
     if (!users.length) {
-      return res.status(401).json({ success: false, error: 'User not found or inactive' });
+      return res
+        .status(401)
+        .json({ success: false, error: "User not found or inactive" });
     }
 
     req.user = {
       id: users[0].id,
       name: users[0].name,
       email: users[0].email,
-      role: users[0].role
+      role: users[0].role,
     };
 
     next();
   } catch (error) {
-    if (error.name === 'TokenExpiredError') {
-      return res.status(401).json({ success: false, error: 'Token expired' });
+    console.error("Authentication error:", error);
+    if (error.name === "TokenExpiredError") {
+      return res.status(401).json({ success: false, error: "Token expired" });
     }
-    if (error.name === 'JsonWebTokenError') {
-      return res.status(401).json({ success: false, error: 'Invalid token' });
+    if (error.name === "JsonWebTokenError") {
+      return res.status(401).json({ success: false, error: "Invalid token" });
     }
-    return res.status(500).json({ success: false, error: 'Authentication failed' });
+    return res
+      .status(500)
+      .json({ success: false, error: "Authentication failed" });
   }
 };
 
@@ -47,7 +53,9 @@ const authenticate = async (req, res, next) => {
 const authorize = (...roles) => {
   return (req, res, next) => {
     if (!req.user || !roles.includes(req.user.role)) {
-      return res.status(403).json({ success: false, error: 'Insufficient permissions' });
+      return res
+        .status(403)
+        .json({ success: false, error: "Insufficient permissions" });
     }
     next();
   };

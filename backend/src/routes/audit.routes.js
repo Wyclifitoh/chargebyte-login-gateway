@@ -7,5 +7,6 @@ router.use(authenticate);
 router.use(authorize('super_admin'));
 
 router.get('/', controller.getAll);
+router.get('/filters', controller.getFilters);
 
 module.exports = router;

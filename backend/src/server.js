@@ -17,6 +17,13 @@ const auditRoutes = require('./routes/audit.routes');
 const operationRoutes = require('./routes/operation.routes');
 const notificationRoutes = require('./routes/notification.routes');
 const revenueRoutes = require('./routes/revenue.routes');
+const partnerRoutes = require('./routes/partner.routes');
+const eventRoutes = require('./routes/event.routes');
+const activationRoutes = require('./routes/activation.routes');
+const overviewRoutes = require('./routes/overview.routes');
+const mpesaRoutes = require('./routes/mpesa.routes');
+const mpesaPublicRoutes = require('./routes/mpesa-public.routes');
+const adClientRoutes = require('./routes/adclient.routes');
 const { errorHandler, notFound } = require('./middleware/error.middleware');
 
 const app = express();
@@ -73,6 +80,14 @@ app.use('/api/audit', auditRoutes);
 app.use('/api/operations', operationRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/revenue', revenueRoutes);
+app.use('/api/partners', partnerRoutes);
+app.use('/api/events', eventRoutes);
+app.use('/api/activations', activationRoutes);
+app.use('/api/overview', overviewRoutes);
+app.use('/api/mpesa', mpesaRoutes);
+app.use('/api/advertising-clients', adClientRoutes);
+// Public M-Pesa callbacks (Safaricom hits these — no auth)
+app.use('/api/public/mpesa', mpesaPublicRoutes);
 
 // Error handling
 app.use(notFound);

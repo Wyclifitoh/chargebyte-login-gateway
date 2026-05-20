@@ -8,6 +8,9 @@ const router = express.Router();
 router.use(authenticate);
 
 router.get('/', authorize('super_admin', 'admin', 'staff'), controller.getAll);
+router.get('/summary', authorize('super_admin', 'admin', 'staff'), controller.getSummary);
+router.get('/export', authorize('super_admin', 'admin', 'staff'), controller.exportXlsx);
+router.post('/sms', authorize('super_admin', 'admin', 'staff'), controller.sendSms);
 router.get('/:id', authorize('super_admin', 'admin', 'staff'), [param('id').isUUID(), validate], controller.getById);
 router.patch('/:id/cancel', authorize('super_admin', 'admin'), [param('id').isUUID(), validate], controller.cancel);
 

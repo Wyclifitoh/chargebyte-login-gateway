@@ -6,32 +6,30 @@ const { auditLog } = require('../middleware/audit.middleware');
 const userController = require('../controllers/user.controller');
 
 const router = express.Router();
-
 router.use(authenticate);
 
+// PIN endpoints — every authenticated user manages their own
+router.get('/me/pin-status', userController.getPinStatus);
+router.post('/me/pin', auditLog('UPDATE', 'system_users'), userController.setPin);
+
 router.get('/', authorize('super_admin', 'admin'), userController.getAll);
-router.get('/:id', authorize('super_admin', 'admin'), [
-  param('id').isUUID().withMessage('Invalid user ID'), validate
-], userController.getById);
+router.get('/:id', authorize('super_admin', 'admin'), userController.getById);
 
 router.post('/', authorize('super_admin'), [
-  body('name').trim().notEmpty().isLength({ max: 100 }),
+  body('name').trim().notEmpty(),
   body('email').isEmail().normalizeEmail(),
   body('password').isLength({ min: 8 }),
-  body('role').isIn(['super_admin', 'admin', 'staff', 'location_partner', 'advertising_client']),
+  body('role').isIn(['super_admin', 'admin', 'staff', 'location_partner', 'funding_partner', 'ad_client', 'system']),
   validate
-], auditLog('CREATE', 'users'), userController.create);
+], auditLog('CREATE', 'system_users'), userController.create);
 
 router.put('/:id', authorize('super_admin'), [
   param('id').isUUID(),
-  body('name').optional().trim().isLength({ max: 100 }),
-  body('email').optional().isEmail().normalizeEmail(),
-  body('role').optional().isIn(['super_admin', 'admin', 'staff', 'location_partner', 'advertising_client']),
   validate
-], auditLog('UPDATE', 'users'), userController.update);
+], auditLog('UPDATE', 'system_users'), userController.update);
 
 router.delete('/:id', authorize('super_admin'), [
   param('id').isUUID(), validate
-], auditLog('DELETE', 'users'), userController.remove);
+], auditLog('DELETE', 'system_users'), userController.remove);
 
 module.exports = router;

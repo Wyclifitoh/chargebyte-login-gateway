@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS system_users (
   password_hash VARCHAR(255) NOT NULL,
   full_name VARCHAR(100) NOT NULL,
   phone VARCHAR(15) DEFAULT NULL,
-  role ENUM('super_admin','staff','location_partner','funding_partner','ad_client','system') NOT NULL,
+  role ENUM('super_admin','admin','staff','location_partner','funding_partner','ad_client','system') NOT NULL,
   partner_id VARCHAR(36) DEFAULT NULL,
   partner_type VARCHAR(50) DEFAULT NULL,
   is_active TINYINT(1) DEFAULT 1,
