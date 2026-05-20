@@ -40,9 +40,9 @@ export const ROLE_DASHBOARD_PATHS: Record<UserRole, string> = {
 
 // Which nav items each role can see
 export const ROLE_NAV_ACCESS: Record<UserRole, string[]> = {
-  super_admin: ["overview", "rentals", "machines", "stations", "revenue", "users", "partners", "adclients", "forms", "campaigns", "transactions", "mpesa", "audit", "operations", "notifications"],
-  admin: ["overview", "rentals", "machines", "stations", "revenue", "users", "partners", "adclients", "forms", "campaigns", "transactions", "operations", "notifications"],
-  staff: ["overview", "rentals", "machines", "forms", "operations", "notifications"],
+  super_admin: ["overview", "rentals", "machines", "stations", "revenue", "users", "partners", "adclients", "forms", "campaigns", "transactions", "mpesa", "audit", "operations", "notifications", "team", "clockin"],
+  admin: ["overview", "rentals", "machines", "stations", "revenue", "users", "partners", "adclients", "forms", "campaigns", "transactions", "operations", "notifications", "team", "clockin"],
+  staff: ["overview", "clockin", "notifications"],
   location_partner: ["overview", "partner", "revenue", "notifications"],
   funding_partner: ["overview", "partner", "revenue", "notifications"],
   ad_client: ["overview", "campaigns", "notifications"],
@@ -194,6 +194,51 @@ export interface Campaign {
   ctr: number;
   spend: number;
   status: "active" | "completed" | "scheduled" | "paused";
+}
+
+export type TeamCategory = "core" | "agent" | "consultant";
+
+export interface TeamMember {
+  id: string;
+  system_user_id?: string | null;
+  full_name: string;
+  email?: string | null;
+  phone?: string | null;
+  category: TeamCategory;
+  title?: string | null;
+  is_active: number | boolean;
+  created_at?: string;
+}
+
+export interface ClockWhitelist {
+  id: string;
+  name: string;
+  type: "ip" | "cidr" | "geo";
+  ip_cidr?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  radius_meters?: number | null;
+  is_active: number | boolean;
+  notes?: string | null;
+  created_at?: string;
+}
+
+export interface ClockEvent {
+  id: string;
+  team_member_id?: string | null;
+  system_user_id: string;
+  event_type: "clock_in" | "clock_out";
+  event_time: string;
+  ip_address?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  status: "approved" | "rejected";
+  reject_reason?: string | null;
+  member_name?: string | null;
+  member_category?: TeamCategory | null;
+  user_name?: string | null;
+  user_email?: string | null;
+  whitelist_name?: string | null;
 }
 
 export interface Lead {

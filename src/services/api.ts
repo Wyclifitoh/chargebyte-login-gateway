@@ -297,6 +297,29 @@ export const api = {
     createDailyPlan: (data: unknown) => apiPost("/operations/daily-plans", data),
     toggleDailyPlan: (id: string) => apiPost(`/operations/daily-plans/${id}/toggle`, {}),
   },
+
+  team: {
+    list: (params?: Record<string, string | number | undefined>) =>
+      apiGet(`/team${buildQS(params)}`),
+    create: (data: unknown) => apiPost("/team", data),
+    update: (id: string, data: unknown) => apiPut(`/team/${id}`, data),
+    remove: (id: string) => apiDelete(`/team/${id}`),
+  },
+
+  clockin: {
+    clock: (data: { event_type: "clock_in" | "clock_out"; latitude?: number; longitude?: number; accuracy?: number }) =>
+      apiPost("/clockin/clock", data),
+    myEvents: () => apiGet("/clockin/events/me"),
+    events: (params?: Record<string, string | number | undefined>) =>
+      apiGet(`/clockin/events${buildQS(params)}`),
+    summary: () => apiGet("/clockin/summary"),
+    whitelist: {
+      list: () => apiGet("/clockin/whitelist"),
+      create: (data: unknown) => apiPost("/clockin/whitelist", data),
+      update: (id: string, data: unknown) => apiPut(`/clockin/whitelist/${id}`, data),
+      remove: (id: string) => apiDelete(`/clockin/whitelist/${id}`),
+    },
+  },
 };
 
 export default api;
