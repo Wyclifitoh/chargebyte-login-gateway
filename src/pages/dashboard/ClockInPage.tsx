@@ -147,17 +147,43 @@ const SelfClock = () => {
           </Select>
         </div>
 
+        <div className="w-full max-w-sm mb-3 rounded-md border border-border bg-muted/30 p-3 text-left text-xs">
+          <div className="flex items-center gap-2 font-medium mb-1">
+            <MapPin className="h-3.5 w-3.5" /> Device location
+          </div>
+          {geo.status === "loading" && <p className="text-muted-foreground">Acquiring GPS…</p>}
+          {geo.status === "denied" && <p className="text-destructive">Location blocked: {geo.message}. Enable location permission to clock in.</p>}
+          {geo.status === "ok" && (
+            <>
+              <p className="font-mono text-[11px] text-muted-foreground">
+                {geo.lat.toFixed(6)}, {geo.lon.toFixed(6)} · ±{Math.round(geo.accuracy)}m
+              </p>
+              {hasFences && fenceCheck && (
+                <p className={`mt-1 ${fenceCheck.inside ? "text-emerald-600" : "text-destructive"}`}>
+                  {fenceCheck.inside ? (
+                    <><ShieldCheck className="h-3 w-3 inline mr-1" />Inside &quot;{fenceCheck.fence.name}&quot; ({Math.round(fenceCheck.distance)}m of {fenceCheck.fence.radius_meters}m)</>
+                  ) : (
+                    <><ShieldAlert className="h-3 w-3 inline mr-1" />Outside any allowed area · nearest: {fenceCheck.fence.name} ({Math.round(fenceCheck.distance)}m away)</>
+                  )}
+                </p>
+              )}
+              {!hasFences && <p className="mt-1 text-muted-foreground">No geo-fence configured — server will validate on submit.</p>}
+            </>
+          )}
+        </div>
+
         <div className="flex gap-3">
-          <Button onClick={() => submit("clock_in")} disabled={busy || isClockedIn}>
+          <Button onClick={() => submit("clock_in")} disabled={busy || isClockedIn || blockedByGeo || geo.status !== "ok"}>
             <LogIn className="h-4 w-4 mr-2" /> Clock In
           </Button>
-          <Button variant="outline" onClick={() => submit("clock_out")} disabled={busy || !isClockedIn}>
+          <Button variant="outline" onClick={() => submit("clock_out")} disabled={busy || !isClockedIn || geo.status !== "ok"}>
             <LogOut className="h-4 w-4 mr-2" /> Clock Out
           </Button>
         </div>
         <p className="text-xs text-muted-foreground mt-4 max-w-md">
-          You can only clock in from whitelisted networks / geo-fenced areas, and within allowed hours (04:00–24:00 EAT).
+          Your device GPS is checked against the allowed area. Clock-in is only permitted within the configured radius and during allowed hours (04:00–24:00 EAT).
         </p>
+
       </div>
 
       <div className="bg-card border border-border rounded-lg overflow-hidden">
