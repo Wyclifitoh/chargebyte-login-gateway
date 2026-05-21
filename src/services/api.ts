@@ -307,7 +307,7 @@ export const api = {
   },
 
   clockin: {
-    clock: (data: { event_type: "clock_in" | "clock_out"; latitude?: number; longitude?: number; accuracy?: number }) =>
+    clock: (data: { event_type: "clock_in" | "clock_out"; latitude?: number; longitude?: number; accuracy?: number; station_id?: string; location_name?: string }) =>
       apiPost("/clockin/clock", data),
     myEvents: () => apiGet("/clockin/events/me"),
     events: (params?: Record<string, string | number | undefined>) =>
@@ -318,6 +318,12 @@ export const api = {
       create: (data: unknown) => apiPost("/clockin/whitelist", data),
       update: (id: string, data: unknown) => apiPut(`/clockin/whitelist/${id}`, data),
       remove: (id: string) => apiDelete(`/clockin/whitelist/${id}`),
+    },
+    reports: {
+      list: (params?: Record<string, string | number | undefined>) =>
+        apiGet(`/clockin/reports${buildQS(params)}`),
+      upsert: (data: unknown) => apiPost("/clockin/reports", data),
+      remove: (id: string) => apiDelete(`/clockin/reports/${id}`),
     },
   },
 };

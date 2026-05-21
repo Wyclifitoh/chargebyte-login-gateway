@@ -39,10 +39,12 @@ export const ROLE_DASHBOARD_PATHS: Record<UserRole, string> = {
 };
 
 // Which nav items each role can see
+// Super Admin: everything. Admin: ops-focused (no revenue/mpesa/partners/adclients/transactions/campaigns/audit).
+// Staff: clock-in, daily report, alerts.
 export const ROLE_NAV_ACCESS: Record<UserRole, string[]> = {
-  super_admin: ["overview", "rentals", "machines", "stations", "revenue", "users", "partners", "adclients", "forms", "campaigns", "transactions", "mpesa", "audit", "operations", "notifications", "team", "clockin"],
-  admin: ["overview", "rentals", "machines", "stations", "revenue", "users", "partners", "adclients", "forms", "campaigns", "transactions", "operations", "notifications", "team", "clockin"],
-  staff: ["overview", "clockin", "notifications"],
+  super_admin: ["overview", "rentals", "machines", "stations", "revenue", "users", "partners", "adclients", "forms", "campaigns", "transactions", "mpesa", "audit", "operations", "notifications", "clockin", "reports"],
+  admin: ["overview", "rentals", "machines", "stations", "users", "forms", "operations", "notifications", "clockin", "reports"],
+  staff: ["overview", "clockin", "reports", "notifications"],
   location_partner: ["overview", "partner", "revenue", "notifications"],
   funding_partner: ["overview", "partner", "revenue", "notifications"],
   ad_client: ["overview", "campaigns", "notifications"],
@@ -239,6 +241,25 @@ export interface ClockEvent {
   user_name?: string | null;
   user_email?: string | null;
   whitelist_name?: string | null;
+}
+
+export interface DailyReport {
+  id: string;
+  report_date: string;
+  agent_user_id: string;
+  agent_name: string;
+  station_id?: string | null;
+  location: string;
+  rentals: number;
+  returns: number;
+  pending_returns: number;
+  powerbanks_arrival: number;
+  powerbanks_departure: number;
+  time_in?: string | null;
+  time_out?: string | null;
+  rentals_auto?: number;
+  notes?: string | null;
+  created_at?: string;
 }
 
 export interface Lead {

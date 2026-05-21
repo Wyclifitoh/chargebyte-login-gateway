@@ -24,8 +24,8 @@ import OperationsPage from "@/pages/dashboard/OperationsPage";
 import NotificationsPage from "@/pages/dashboard/NotificationsPage";
 import PartnersPage from "@/pages/dashboard/PartnersPage";
 import AdClientsPage from "@/pages/dashboard/AdClientsPage";
-import TeamPage from "@/pages/dashboard/TeamPage";
 import ClockInPage from "@/pages/dashboard/ClockInPage";
+import ReportsPage from "@/pages/dashboard/ReportsPage";
 
 const queryClient = new QueryClient();
 
@@ -60,8 +60,8 @@ const App = () => (
             <Route path="/dashboard/audit" element={<DashboardRoute section="audit"><AuditLogsPage /></DashboardRoute>} />
             <Route path="/dashboard/operations" element={<DashboardRoute section="operations"><OperationsPage /></DashboardRoute>} />
             <Route path="/dashboard/notifications" element={<DashboardRoute section="notifications"><NotificationsPage /></DashboardRoute>} />
-            <Route path="/dashboard/team" element={<DashboardRoute section="team"><TeamPage /></DashboardRoute>} />
             <Route path="/dashboard/clockin" element={<DashboardRoute section="clockin"><ClockInPage /></DashboardRoute>} />
+            <Route path="/dashboard/reports" element={<DashboardRoute section="reports"><ReportsPage /></DashboardRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>

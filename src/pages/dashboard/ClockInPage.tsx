@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Clock, LogIn, LogOut, MapPin, ShieldCheck, ShieldAlert, Plus, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Clock, LogIn, LogOut, ShieldCheck, ShieldAlert, Plus, Trash2, MapPin } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader, TableSkeleton, EmptyState, ConfirmDialog } from "@/components/shared";
 import { Button } from "@/components/ui/button";
@@ -10,9 +10,12 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { api } from "@/services/api";
 import { useAuth } from "@/contexts/AuthContext";
-import type { ClockEvent, ClockWhitelist } from "@/types/dashboard";
+import type { ClockEvent, ClockWhitelist, Station } from "@/types/dashboard";
 
-function fmtTime(iso: string) {
+const REFRESH_MS = 7000;
+
+function fmtTime(iso?: string | null) {
+  if (!iso) return "—";
   try { return new Date(iso).toLocaleString("en-KE", { timeZone: "Africa/Nairobi" }); }
   catch { return iso; }
 }
@@ -31,36 +34,42 @@ function getPosition(): Promise<GeolocationPosition | null> {
 // --------- Staff/Agent self-clock UI ---------
 const SelfClock = () => {
   const [events, setEvents] = useState<ClockEvent[]>([]);
+  const [stations, setStations] = useState<Station[]>([]);
+  const [stationId, setStationId] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
 
   const load = async () => {
-    setLoading(true);
     const res = await api.clockin.myEvents();
     if (res.success) setEvents((res.data as ClockEvent[]) || []);
     setLoading(false);
   };
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    api.stations.getAll().then((r) => { if (r.success) setStations((r.data as Station[]) || []); });
+    const t = setInterval(load, REFRESH_MS);
+    return () => clearInterval(t);
+  }, []);
 
   const last = events.find((e) => e.status === "approved");
   const isClockedIn = last?.event_type === "clock_in";
 
   const submit = async (event_type: "clock_in" | "clock_out") => {
+    if (event_type === "clock_in" && !stationId) { toast.error("Pick your location first"); return; }
     setBusy(true);
     try {
       const pos = await getPosition();
-      const payload = {
+      const station = stations.find((s) => s.id === stationId);
+      const res = await api.clockin.clock({
         event_type,
         latitude: pos?.coords.latitude,
         longitude: pos?.coords.longitude,
         accuracy: pos?.coords.accuracy,
-      };
-      const res = await api.clockin.clock(payload);
-      if (res.success) {
-        toast.success(event_type === "clock_in" ? "Clocked in" : "Clocked out");
-      } else {
-        toast.error(res.error || "Rejected — outside allowed area");
-      }
+        station_id: stationId || undefined,
+        location_name: station?.name,
+      });
+      if (res.success) toast.success(event_type === "clock_in" ? "Clocked in" : "Clocked out");
+      else toast.error(res.error || "Rejected — outside allowed area");
       load();
     } finally { setBusy(false); }
   };
@@ -76,8 +85,24 @@ const SelfClock = () => {
         {last && (
           <p className="text-xs text-muted-foreground mb-4">
             Last: {last.event_type.replace("_", " ")} at {fmtTime(last.event_time)}
+            {last.whitelist_name ? ` · ${last.whitelist_name}` : ""}
           </p>
         )}
+
+        <div className="w-full max-w-sm mb-4">
+          <label className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+            <MapPin className="h-3 w-3" /> Location
+          </label>
+          <Select value={stationId} onValueChange={setStationId} disabled={isClockedIn}>
+            <SelectTrigger><SelectValue placeholder="Choose station / location" /></SelectTrigger>
+            <SelectContent>
+              {stations.map((s) => (
+                <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
         <div className="flex gap-3">
           <Button onClick={() => submit("clock_in")} disabled={busy || isClockedIn}>
             <LogIn className="h-4 w-4 mr-2" /> Clock In
@@ -87,8 +112,7 @@ const SelfClock = () => {
           </Button>
         </div>
         <p className="text-xs text-muted-foreground mt-4 max-w-md">
-          You can only clock in from whitelisted office networks or approved geo-fenced areas.
-          Location permission is required.
+          You can only clock in from whitelisted networks / geo-fenced areas, and within allowed hours (04:00–24:00 EAT).
         </p>
       </div>
 
@@ -104,7 +128,7 @@ const SelfClock = () => {
               <tr>
                 <th className="text-left px-4 py-2">Type</th>
                 <th className="text-left px-4 py-2">Time</th>
-                <th className="text-left px-4 py-2">IP</th>
+                <th className="text-left px-4 py-2">Location</th>
                 <th className="text-left px-4 py-2">Status</th>
               </tr>
             </thead>
@@ -113,7 +137,7 @@ const SelfClock = () => {
                 <tr key={e.id} className="border-t border-border">
                   <td className="px-4 py-2 capitalize">{e.event_type.replace("_", " ")}</td>
                   <td className="px-4 py-2 text-muted-foreground">{fmtTime(e.event_time)}</td>
-                  <td className="px-4 py-2 text-muted-foreground">{e.ip_address || "—"}</td>
+                  <td className="px-4 py-2 text-muted-foreground">{(e as ClockEvent & { location_name?: string }).location_name || "—"}</td>
                   <td className="px-4 py-2">
                     {e.status === "approved" ? (
                       <Badge variant="default"><ShieldCheck className="h-3 w-3 mr-1" />Approved</Badge>
@@ -135,7 +159,7 @@ const SelfClock = () => {
 
 // --------- Admin views ---------
 type SummaryShape = {
-  clocked_in: ClockEvent[];
+  clocked_in: (ClockEvent & { location_name?: string })[];
   today: { total_events: number; clock_ins: number; clock_outs: number; rejected: number };
 };
 
@@ -151,21 +175,27 @@ const AdminView = () => {
   const [wlForm, setWlForm] = useState({ name: "", type: "ip" as "ip" | "cidr" | "geo", ip_cidr: "", latitude: "", longitude: "", radius_meters: "150", notes: "" });
   const [confirmDel, setConfirmDel] = useState<ClockWhitelist | null>(null);
 
-  const loadAll = async () => {
-    setLoadingEvents(true);
-    const [s, e, w] = await Promise.all([api.clockin.summary(), api.clockin.events({ limit: 100 }), api.clockin.whitelist.list()]);
+  const loadLive = async () => {
+    const [s, e] = await Promise.all([api.clockin.summary(), api.clockin.events({ limit: 100 })]);
     if (s.success) setSummary(s.data as SummaryShape);
     if (e.success) setEvents((e.data as ClockEvent[]) || []);
-    if (w.success) setWhitelist((w.data as ClockWhitelist[]) || []);
     setLoadingEvents(false);
   };
-  useEffect(() => { loadAll(); }, []);
+  const loadWhitelist = async () => {
+    const w = await api.clockin.whitelist.list();
+    if (w.success) setWhitelist((w.data as ClockWhitelist[]) || []);
+  };
+
+  useEffect(() => {
+    loadLive();
+    loadWhitelist();
+    const t = setInterval(loadLive, REFRESH_MS);
+    return () => clearInterval(t);
+  }, []);
 
   const addWhitelist = async () => {
     if (!wlForm.name.trim()) { toast.error("Name required"); return; }
-    const payload: Record<string, unknown> = {
-      name: wlForm.name, type: wlForm.type, notes: wlForm.notes,
-    };
+    const payload: Record<string, unknown> = { name: wlForm.name, type: wlForm.type, notes: wlForm.notes };
     if (wlForm.type === "geo") {
       payload.latitude = parseFloat(wlForm.latitude);
       payload.longitude = parseFloat(wlForm.longitude);
@@ -174,14 +204,17 @@ const AdminView = () => {
       payload.ip_cidr = wlForm.ip_cidr;
     }
     const res = await api.clockin.whitelist.create(payload);
-    if (res.success) { toast.success("Added"); setWlOpen(false); setWlForm({ name: "", type: "ip", ip_cidr: "", latitude: "", longitude: "", radius_meters: "150", notes: "" }); loadAll(); }
-    else toast.error(res.error || "Failed");
+    if (res.success) {
+      toast.success("Added"); setWlOpen(false);
+      setWlForm({ name: "", type: "ip", ip_cidr: "", latitude: "", longitude: "", radius_meters: "150", notes: "" });
+      loadWhitelist();
+    } else toast.error(res.error || "Failed");
   };
 
   const removeWl = async () => {
     if (!confirmDel) return;
     const res = await api.clockin.whitelist.remove(confirmDel.id);
-    if (res.success) { toast.success("Removed"); loadAll(); } else toast.error(res.error || "Failed");
+    if (res.success) { toast.success("Removed"); loadWhitelist(); } else toast.error(res.error || "Failed");
     setConfirmDel(null);
   };
 
@@ -189,7 +222,7 @@ const AdminView = () => {
     <div className="space-y-6">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <div className="bg-card border border-border rounded-lg p-4">
-          <p className="text-xs text-muted-foreground">Currently In</p>
+          <p className="text-xs text-muted-foreground">Currently In <span className="inline-block h-2 w-2 rounded-full bg-emerald-500 animate-pulse ml-1" /></p>
           <p className="text-2xl font-bold">{summary?.clocked_in.length ?? "—"}</p>
         </div>
         <div className="bg-card border border-border rounded-lg p-4">
@@ -215,7 +248,7 @@ const AdminView = () => {
 
         <TabsContent value="live" className="mt-4">
           {(summary?.clocked_in.length ?? 0) === 0 ? (
-            <EmptyState icon={<Clock className="h-6 w-6 text-muted-foreground" />} title="No one is clocked in" description="Approved clock-ins will appear here." />
+            <EmptyState icon={<Clock className="h-6 w-6 text-muted-foreground" />} title="No one is clocked in" description="Approved clock-ins will appear here. Auto-refreshing." />
           ) : (
             <div className="bg-card border border-border rounded-lg overflow-hidden">
               <table className="w-full text-sm">
@@ -223,6 +256,7 @@ const AdminView = () => {
                   <tr>
                     <th className="text-left px-4 py-2">Member</th>
                     <th className="text-left px-4 py-2">Category</th>
+                    <th className="text-left px-4 py-2">Location</th>
                     <th className="text-left px-4 py-2">Since</th>
                   </tr>
                 </thead>
@@ -231,6 +265,7 @@ const AdminView = () => {
                     <tr key={r.id} className="border-t border-border">
                       <td className="px-4 py-2 font-medium">{r.member_name || r.user_name}</td>
                       <td className="px-4 py-2 capitalize text-muted-foreground">{r.member_category || "—"}</td>
+                      <td className="px-4 py-2 text-muted-foreground">{r.location_name || "—"}</td>
                       <td className="px-4 py-2 text-muted-foreground">{fmtTime(r.event_time)}</td>
                     </tr>
                   ))}
@@ -253,9 +288,9 @@ const AdminView = () => {
                     <th className="text-left px-4 py-2">Member</th>
                     <th className="text-left px-4 py-2">Type</th>
                     <th className="text-left px-4 py-2">Time</th>
+                    <th className="text-left px-4 py-2">Location</th>
                     <th className="text-left px-4 py-2">IP</th>
                     <th className="text-left px-4 py-2">Status</th>
-                    <th className="text-left px-4 py-2">Whitelist</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -264,6 +299,7 @@ const AdminView = () => {
                       <td className="px-4 py-2 font-medium">{e.member_name || e.user_name || e.user_email}</td>
                       <td className="px-4 py-2 capitalize">{e.event_type.replace("_", " ")}</td>
                       <td className="px-4 py-2 text-muted-foreground">{fmtTime(e.event_time)}</td>
+                      <td className="px-4 py-2 text-muted-foreground">{(e as ClockEvent & { location_name?: string }).location_name || e.whitelist_name || "—"}</td>
                       <td className="px-4 py-2 text-muted-foreground">{e.ip_address || "—"}</td>
                       <td className="px-4 py-2">
                         {e.status === "approved" ? (
@@ -274,7 +310,6 @@ const AdminView = () => {
                           </Badge>
                         )}
                       </td>
-                      <td className="px-4 py-2 text-muted-foreground text-xs">{e.whitelist_name || e.reject_reason || "—"}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -307,14 +342,10 @@ const AdminView = () => {
                       <td className="px-4 py-2 font-medium">{w.name}</td>
                       <td className="px-4 py-2 uppercase text-xs">{w.type}</td>
                       <td className="px-4 py-2 text-muted-foreground font-mono text-xs">
-                        {w.type === "geo"
-                          ? `${w.latitude}, ${w.longitude} (±${w.radius_meters}m)`
-                          : w.ip_cidr}
+                        {w.type === "geo" ? `${w.latitude}, ${w.longitude} (±${w.radius_meters}m)` : w.ip_cidr}
                       </td>
                       <td className="px-4 py-2">
-                        <Badge variant={w.is_active ? "default" : "secondary"}>
-                          {w.is_active ? "Active" : "Disabled"}
-                        </Badge>
+                        <Badge variant={w.is_active ? "default" : "secondary"}>{w.is_active ? "Active" : "Disabled"}</Badge>
                       </td>
                       {canDeleteWhitelist && (
                         <td className="px-4 py-2 text-right">
@@ -383,10 +414,7 @@ const ClockInPage = () => {
   const isAdmin = user?.role === "super_admin" || user?.role === "admin";
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Clock In / Out"
-        description={isAdmin ? "Monitor team activity and manage allowed clock-in areas" : "Clock in and out from approved locations"}
-      />
+      <PageHeader title="Clock In / Out" description={isAdmin ? "Monitor live attendance and manage allowed areas" : "Clock in or out for your shift"} />
       {isAdmin ? <AdminView /> : <SelfClock />}
     </div>
   );
