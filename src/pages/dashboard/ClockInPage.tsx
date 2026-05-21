@@ -20,16 +20,21 @@ function fmtTime(iso?: string | null) {
   catch { return iso; }
 }
 
-function getPosition(): Promise<GeolocationPosition | null> {
-  return new Promise((resolve) => {
-    if (!navigator.geolocation) { resolve(null); return; }
-    navigator.geolocation.getCurrentPosition(
-      (p) => resolve(p),
-      () => resolve(null),
-      { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
-    );
-  });
+// Haversine distance in meters
+function distanceMeters(lat1: number, lon1: number, lat2: number, lon2: number) {
+  const R = 6371000;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
 }
+
+type GeoState =
+  | { status: "idle" }
+  | { status: "loading" }
+  | { status: "denied"; message: string }
+  | { status: "ok"; lat: number; lon: number; accuracy: number };
 
 // --------- Staff/Agent self-clock UI ---------
 const SelfClock = () => {
@@ -38,15 +43,39 @@ const SelfClock = () => {
   const [stationId, setStationId] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [geo, setGeo] = useState<GeoState>({ status: "idle" });
+  const [geoFences, setGeoFences] = useState<ClockWhitelist[]>([]);
 
   const load = async () => {
     const res = await api.clockin.myEvents();
     if (res.success) setEvents((res.data as ClockEvent[]) || []);
     setLoading(false);
   };
+
   useEffect(() => {
     load();
     api.stations.getAll().then((r) => { if (r.success) setStations((r.data as Station[]) || []); });
+    api.clockin.whitelist.list().then((r) => {
+      if (r.success) {
+        const fences = ((r.data as ClockWhitelist[]) || []).filter(
+          (w) => w.is_active && w.type === "geo" && w.latitude != null && w.longitude != null
+        );
+        setGeoFences(fences);
+      }
+    });
+
+    if (!navigator.geolocation) {
+      setGeo({ status: "denied", message: "Geolocation not supported by this browser" });
+    } else {
+      setGeo({ status: "loading" });
+      const watchId = navigator.geolocation.watchPosition(
+        (p) => setGeo({ status: "ok", lat: p.coords.latitude, lon: p.coords.longitude, accuracy: p.coords.accuracy }),
+        (err) => setGeo({ status: "denied", message: err.message || "Location permission denied" }),
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 5000 }
+      );
+      const t = setInterval(load, REFRESH_MS);
+      return () => { clearInterval(t); navigator.geolocation.clearWatch(watchId); };
+    }
     const t = setInterval(load, REFRESH_MS);
     return () => clearInterval(t);
   }, []);
@@ -54,17 +83,32 @@ const SelfClock = () => {
   const last = events.find((e) => e.status === "approved");
   const isClockedIn = last?.event_type === "clock_in";
 
+  const fenceCheck = useMemo(() => {
+    if (geo.status !== "ok" || geoFences.length === 0) return null;
+    let best: { fence: ClockWhitelist; distance: number } | null = null;
+    for (const f of geoFences) {
+      const d = distanceMeters(geo.lat, geo.lon, Number(f.latitude), Number(f.longitude));
+      if (!best || d < best.distance) best = { fence: f, distance: d };
+    }
+    if (!best) return null;
+    const inside = best.distance <= Number(best.fence.radius_meters || 150);
+    return { ...best, inside };
+  }, [geo, geoFences]);
+
+  const hasFences = geoFences.length > 0;
+  const blockedByGeo = hasFences && (geo.status !== "ok" || (fenceCheck ? !fenceCheck.inside : true));
+
   const submit = async (event_type: "clock_in" | "clock_out") => {
     if (event_type === "clock_in" && !stationId) { toast.error("Pick your location first"); return; }
+    if (geo.status !== "ok") { toast.error("Waiting for your device location — please allow location access"); return; }
     setBusy(true);
     try {
-      const pos = await getPosition();
       const station = stations.find((s) => s.id === stationId);
       const res = await api.clockin.clock({
         event_type,
-        latitude: pos?.coords.latitude,
-        longitude: pos?.coords.longitude,
-        accuracy: pos?.coords.accuracy,
+        latitude: geo.lat,
+        longitude: geo.lon,
+        accuracy: geo.accuracy,
         station_id: stationId || undefined,
         location_name: station?.name,
       });
@@ -103,17 +147,43 @@ const SelfClock = () => {
           </Select>
         </div>
 
+        <div className="w-full max-w-sm mb-3 rounded-md border border-border bg-muted/30 p-3 text-left text-xs">
+          <div className="flex items-center gap-2 font-medium mb-1">
+            <MapPin className="h-3.5 w-3.5" /> Device location
+          </div>
+          {geo.status === "loading" && <p className="text-muted-foreground">Acquiring GPS…</p>}
+          {geo.status === "denied" && <p className="text-destructive">Location blocked: {geo.message}. Enable location permission to clock in.</p>}
+          {geo.status === "ok" && (
+            <>
+              <p className="font-mono text-[11px] text-muted-foreground">
+                {geo.lat.toFixed(6)}, {geo.lon.toFixed(6)} · ±{Math.round(geo.accuracy)}m
+              </p>
+              {hasFences && fenceCheck && (
+                <p className={`mt-1 ${fenceCheck.inside ? "text-emerald-600" : "text-destructive"}`}>
+                  {fenceCheck.inside ? (
+                    <><ShieldCheck className="h-3 w-3 inline mr-1" />Inside &quot;{fenceCheck.fence.name}&quot; ({Math.round(fenceCheck.distance)}m of {fenceCheck.fence.radius_meters}m)</>
+                  ) : (
+                    <><ShieldAlert className="h-3 w-3 inline mr-1" />Outside any allowed area · nearest: {fenceCheck.fence.name} ({Math.round(fenceCheck.distance)}m away)</>
+                  )}
+                </p>
+              )}
+              {!hasFences && <p className="mt-1 text-muted-foreground">No geo-fence configured — server will validate on submit.</p>}
+            </>
+          )}
+        </div>
+
         <div className="flex gap-3">
-          <Button onClick={() => submit("clock_in")} disabled={busy || isClockedIn}>
+          <Button onClick={() => submit("clock_in")} disabled={busy || isClockedIn || blockedByGeo || geo.status !== "ok"}>
             <LogIn className="h-4 w-4 mr-2" /> Clock In
           </Button>
-          <Button variant="outline" onClick={() => submit("clock_out")} disabled={busy || !isClockedIn}>
+          <Button variant="outline" onClick={() => submit("clock_out")} disabled={busy || !isClockedIn || geo.status !== "ok"}>
             <LogOut className="h-4 w-4 mr-2" /> Clock Out
           </Button>
         </div>
         <p className="text-xs text-muted-foreground mt-4 max-w-md">
-          You can only clock in from whitelisted networks / geo-fenced areas, and within allowed hours (04:00–24:00 EAT).
+          Your device GPS is checked against the allowed area. Clock-in is only permitted within the configured radius and during allowed hours (04:00–24:00 EAT).
         </p>
+
       </div>
 
       <div className="bg-card border border-border rounded-lg overflow-hidden">
