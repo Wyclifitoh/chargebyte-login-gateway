@@ -114,14 +114,24 @@ const RevenuePage = () => {
           Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-[110px] rounded-xl" />)
         ) : (
           <>
-            <MetricCard title="Total Revenue"   value={formatKsh(summary.data.total_revenue)}    icon={<Wallet className="h-5 w-5" />} />
-            <MetricCard title="Rental Charges"  value={formatKsh(summary.data.rental_revenue)}   icon={<Receipt className="h-5 w-5" />} />
-            <MetricCard title="Deposits"        value={formatKsh(summary.data.deposit_revenue)}  icon={<Activity className="h-5 w-5" />} />
-            <MetricCard title="Refunds"         value={formatKsh(summary.data.refund_revenue)}   icon={<RefreshCw className="h-5 w-5" />} />
-            <MetricCard title="Transactions"    value={summary.data.total_transactions.toLocaleString()} icon={<TrendingUp className="h-5 w-5" />} />
+            <MetricCard title="Net Revenue"        value={formatKsh(summary.data.net_revenue)}        icon={<Wallet className="h-5 w-5" />} />
+            <MetricCard title="Rental Charges"     value={formatKsh(summary.data.rental_charges)}     icon={<Receipt className="h-5 w-5" />} />
+            <MetricCard title="Deposits Collected" value={formatKsh(summary.data.deposits_collected)} icon={<Activity className="h-5 w-5" />} />
+            <MetricCard title="Refunds Issued"     value={formatKsh(summary.data.refunds_issued)}     icon={<RefreshCw className="h-5 w-5" />} />
+            <MetricCard title="Transaction Volume" value={formatKsh(summary.data.transaction_volume)} icon={<TrendingUp className="h-5 w-5" />} />
           </>
         )}
       </div>
+
+      {!summary.isLoading && (
+        <div className="rounded-lg border border-border bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
+          <span className="font-medium text-foreground">Net Revenue formula:</span>{" "}
+          Rental Charges {formatKsh(summary.data.rental_charges)} + (Deposits Collected {formatKsh(summary.data.deposits_collected)} − Refunds Issued {formatKsh(summary.data.refunds_issued)}){" "}
+          = <span className="font-medium text-foreground">{formatKsh(summary.data.net_revenue)}</span>.
+          {" "}Transaction Volume is the gross sum of all M-Pesa movements (deposits + refunds + charges) and is not revenue.
+        </div>
+      )}
+
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <SectionCard title="Revenue Over Time">

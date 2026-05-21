@@ -379,8 +379,20 @@ export function useOverview(params: DateRangeParams = { period: "today" }) {
 // ---------------- Revenue ----------------
 
 export interface RevenueSummary {
-  total_revenue: number;
+  // Canonical accounting figures (match the Rentals page exactly)
+  net_revenue: number;
+  rental_charges: number;
+  deposits_collected: number;
+  refunds_issued: number;
+  forfeited_deposits: number;
+  rentals_count: number;
+
+  // Raw transaction figures (informational only — NOT revenue)
+  transaction_volume: number;
   total_transactions: number;
+
+  // Legacy aliases (kept so older callers don't break)
+  total_revenue: number;
   rental_revenue: number;
   deposit_revenue: number;
   refund_revenue: number;
@@ -397,17 +409,32 @@ export interface RevenueTransactionRow extends Transaction {
 
 export function useRevenueSummary(params: DateRangeParams = { period: "today" }) {
   const key = JSON.stringify(params);
+  const empty: RevenueSummary = {
+    net_revenue: 0, rental_charges: 0, deposits_collected: 0, refunds_issued: 0,
+    forfeited_deposits: 0, rentals_count: 0,
+    transaction_volume: 0, total_transactions: 0,
+    total_revenue: 0, rental_revenue: 0, deposit_revenue: 0, refund_revenue: 0,
+  };
   return useFetchWithFallback<RevenueSummary>(
     () => api.revenue.getSummary(params as Record<string, string | undefined>) as Promise<ApiResponse<RevenueSummary>>,
-    { total_revenue: 0, total_transactions: 0, rental_revenue: 0, deposit_revenue: 0, refund_revenue: 0 },
+    empty,
     (raw) => {
       const r = (raw ?? {}) as Partial<RevenueSummary>;
+      const rental_charges     = Number(r.rental_charges     ?? r.rental_revenue  ?? 0);
+      const deposits_collected = Number(r.deposits_collected ?? r.deposit_revenue ?? 0);
+      const refunds_issued     = Number(r.refunds_issued     ?? r.refund_revenue  ?? 0);
+      const forfeited_deposits = Number(r.forfeited_deposits ?? Math.max(deposits_collected - refunds_issued, 0));
+      const net_revenue        = Number(r.net_revenue        ?? r.total_revenue   ?? (rental_charges + forfeited_deposits));
       return {
-        total_revenue: Number(r.total_revenue ?? 0),
+        net_revenue, rental_charges, deposits_collected, refunds_issued,
+        forfeited_deposits,
+        rentals_count: Number(r.rentals_count ?? 0),
+        transaction_volume: Number(r.transaction_volume ?? 0),
         total_transactions: Number(r.total_transactions ?? 0),
-        rental_revenue: Number(r.rental_revenue ?? 0),
-        deposit_revenue: Number(r.deposit_revenue ?? 0),
-        refund_revenue: Number(r.refund_revenue ?? 0),
+        total_revenue: net_revenue,
+        rental_revenue: rental_charges,
+        deposit_revenue: deposits_collected,
+        refund_revenue: refunds_issued,
       };
     },
     "revenue summary",

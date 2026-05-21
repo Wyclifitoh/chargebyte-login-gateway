@@ -41,36 +41,91 @@ function txDateClause(from, to, alias = 't') {
 exports.getSummary = async (req, res, next) => {
   try {
     const { from, to } = resolveRange(req.query);
-    const { clause, values } = txDateClause(from, to, 't');
 
-    let sql = `SELECT
-      SUM(CASE WHEN t.status = 'completed' THEN t.amount ELSE 0 END) as total_revenue,
-      COUNT(*) as total_transactions,
-      SUM(CASE WHEN t.transaction_type = 'rental_charge' AND t.status = 'completed' THEN t.amount ELSE 0 END) as rental_revenue,
-      SUM(CASE WHEN t.transaction_type = 'deposit' AND t.status = 'completed' THEN t.amount ELSE 0 END) as deposit_revenue,
-      SUM(CASE WHEN t.transaction_type = 'refund' AND t.status = 'completed' THEN t.amount ELSE 0 END) as refund_revenue
-      FROM transactions t`;
-    const allValues = [...values];
-
+    // ---- Source of truth for rental charges & deposits = `rentals` table.
+    // This matches the Rentals Management page exactly so the two dashboards
+    // can never drift apart.
+    const rConds = [];
+    const rVals = [];
+    if (from) { rConds.push('r.created_at >= ?'); rVals.push(fmt(from)); }
+    if (to)   { rConds.push('r.created_at <= ?'); rVals.push(fmt(to)); }
     if (req.user.role === 'location_partner') {
-      sql += ` JOIN rentals r ON t.rental_id = r.id
-               JOIN cb_stations s ON r.station_id = s.id
-               WHERE s.host_partner_id = ?`;
-      allValues.unshift(); // keep order
-      allValues.push(req.user.id);
-      if (clause) sql += ' AND ' + clause;
-    } else if (clause) {
-      sql += ' WHERE ' + clause;
+      rConds.push('s.host_partner_id = ?');
+      rVals.push(req.user.id);
     }
+    const rWhere = rConds.length ? ' WHERE ' + rConds.join(' AND ') : '';
+    const [rentalRows] = await db.query(
+      `SELECT
+         COALESCE(SUM(r.total_amount), 0)   AS rental_charges,
+         COALESCE(SUM(r.deposit_amount), 0) AS deposits_collected,
+         COALESCE(SUM(CASE WHEN r.deposit_refunded = 1 THEN r.deposit_amount ELSE 0 END), 0) AS deposits_refunded_from_rentals,
+         COUNT(*) AS rentals_count
+       FROM rentals r
+       LEFT JOIN cb_stations s ON r.station_id = s.id
+       ${rWhere}`,
+      rVals,
+    );
+    const rentalAgg = rentalRows[0] || {};
 
-    // Reorder values for partner case (date conds appear after partner id)
-    let finalValues = values.slice();
+    // ---- Refunds & raw transaction stats from `transactions` table.
+    const tConds = ["t.status = 'completed'"];
+    const tVals = [];
+    if (from) { tConds.push('t.created_at >= ?'); tVals.push(fmt(from)); }
+    if (to)   { tConds.push('t.created_at <= ?'); tVals.push(fmt(to)); }
+    let tJoin = '';
     if (req.user.role === 'location_partner') {
-      finalValues = [req.user.id, ...values];
+      tJoin = ' LEFT JOIN rentals r ON t.rental_id = r.id LEFT JOIN cb_stations s ON r.station_id = s.id';
+      tConds.push('s.host_partner_id = ?');
+      tVals.push(req.user.id);
     }
+    const [txRows] = await db.query(
+      `SELECT
+         COUNT(*) AS total_transactions,
+         COALESCE(SUM(t.amount), 0) AS transaction_volume,
+         COALESCE(SUM(CASE WHEN t.transaction_type = 'refund' THEN t.amount ELSE 0 END), 0) AS refunds_issued
+       FROM transactions t ${tJoin}
+       WHERE ${tConds.join(' AND ')}`,
+      tVals,
+    );
+    const txAgg = txRows[0] || {};
 
-    const [rows] = await db.query(sql, finalValues);
-    res.json({ success: true, data: rows[0] || {} });
+    const rental_charges     = Number(rentalAgg.rental_charges || 0);
+    const deposits_collected = Number(rentalAgg.deposits_collected || 0);
+    // Prefer the rentals-table refund total if larger (some refunds aren't logged
+    // as a separate transaction). Otherwise use the transactions figure.
+    const refunds_from_rentals = Number(rentalAgg.deposits_refunded_from_rentals || 0);
+    const refunds_from_tx      = Number(txAgg.refunds_issued || 0);
+    const refunds_issued       = Math.max(refunds_from_rentals, refunds_from_tx);
+
+    // Accountant's formula:
+    //   Net Revenue = Rental Charges + (Deposits Collected − Refunds Issued)
+    // The (deposits − refunds) part = deposits the customer forfeited.
+    const forfeited_deposits = Math.max(deposits_collected - refunds_issued, 0);
+    const net_revenue        = rental_charges + forfeited_deposits;
+
+    res.json({
+      success: true,
+      data: {
+        // Canonical accounting figures (consistent with Rentals page)
+        net_revenue,
+        rental_charges,
+        deposits_collected,
+        refunds_issued,
+        forfeited_deposits,
+        rentals_count: Number(rentalAgg.rentals_count || 0),
+
+        // Raw transaction figures (informational, NOT revenue)
+        transaction_volume: Number(txAgg.transaction_volume || 0),
+        total_transactions: Number(txAgg.total_transactions || 0),
+
+        // Legacy field names — kept for backward compatibility, now mapped
+        // to the corrected definitions.
+        total_revenue:   net_revenue,
+        rental_revenue:  rental_charges,
+        deposit_revenue: deposits_collected,
+        refund_revenue:  refunds_issued,
+      },
+    });
   } catch (error) { next(error); }
 };
 
