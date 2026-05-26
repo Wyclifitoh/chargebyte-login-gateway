@@ -23,7 +23,7 @@ const PAGE_SIZE = 25;
 const PIE_COLORS = ["hsl(var(--primary))", "hsl(var(--accent))", "hsl(var(--secondary))", "hsl(var(--muted-foreground))", "hsl(var(--destructive))"];
 
 const RevenuePage = () => {
-  const [period, setPeriod] = useState<DatePeriod>("today");
+  const [period, setPeriod] = useState<DatePeriod>("all");
   const [dateFrom, setDateFrom] = useState<string | undefined>();
   const [dateTo, setDateTo] = useState<string | undefined>();
   const [search, setSearch] = useState("");
