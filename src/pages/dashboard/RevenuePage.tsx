@@ -125,10 +125,12 @@ const RevenuePage = () => {
 
       {!summary.isLoading && (
         <div className="rounded-lg border border-border bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
-          <span className="font-medium text-foreground">Net Revenue formula:</span>{" "}
-          Rental Charges {formatKsh(summary.data.rental_charges)} + (Deposits Collected {formatKsh(summary.data.deposits_collected)} − Refunds Issued {formatKsh(summary.data.refunds_issued)}){" "}
-          = <span className="font-medium text-foreground">{formatKsh(summary.data.net_revenue)}</span>.
-          {" "}Transaction Volume is the gross sum of all M-Pesa movements (deposits + refunds + charges) and is not revenue.
+          <span className="font-medium text-foreground">Revenue model:</span>{" "}
+          Customer pays a deposit (held as a liability) and is charged the hourly rate. On return we refund the unused deposit.
+          Our <span className="font-medium text-foreground">Net Revenue</span> is the rental charge only — currently{" "}
+          <span className="font-medium text-foreground">{formatKsh(summary.data.net_revenue)}</span> across{" "}
+          {summary.data.rentals_count} rental{summary.data.rentals_count === 1 ? "" : "s"}.
+          {" "}Deposits Held ({formatKsh(summary.data.deposits_collected - summary.data.refunds_issued)}) are outstanding liabilities, not revenue.
         </div>
       )}
 

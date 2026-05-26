@@ -1,5 +1,22 @@
 const db = require('../config/database');
 
+/**
+ * REVENUE MODEL (single source of truth = `rentals` table)
+ * --------------------------------------------------------
+ * Customer pays a deposit (e.g. 1000), hourly rate is e.g. 100/hr.
+ * On return we refund (deposit − charges). Our REVENUE is the rental
+ * charge only — stored as `rentals.total_amount`.
+ *
+ *   Net Revenue        = SUM(r.total_amount)                  [earned]
+ *   Deposits Collected = SUM(r.deposit_amount)                [liability in]
+ *   Refunds Issued     = SUM(r.deposit_amount WHERE refunded) [liability out]
+ *   Deposits Held      = Deposits Collected − Refunds Issued  [outstanding liability,
+ *                                                              NOT revenue]
+ *
+ * Transactions table is used only for the line-item transactions list and
+ * informational "transaction volume" (gross M-Pesa movements).
+ */
+
 function resolveRange(query) {
   const period = (query.period || '').toLowerCase();
   const now = new Date();
@@ -31,44 +48,45 @@ function resolveRange(query) {
 }
 const fmt = (d) => (d ? d.toISOString().slice(0,19).replace('T',' ') : null);
 
-function txDateClause(from, to, alias = 't') {
-  const c = []; const v = [];
-  if (from) { c.push(`${alias}.created_at >= ?`); v.push(fmt(from)); }
-  if (to)   { c.push(`${alias}.created_at <= ?`); v.push(fmt(to)); }
-  return { clause: c.length ? c.join(' AND ') : '', values: v };
+/** Build a WHERE for the `rentals r` table (joined as needed with cb_stations s). */
+function rentalWhere(req, from, to) {
+  const conds = [];
+  const vals = [];
+  if (from) { conds.push('r.created_at >= ?'); vals.push(fmt(from)); }
+  if (to)   { conds.push('r.created_at <= ?'); vals.push(fmt(to)); }
+  if (req.query.station_id) { conds.push('r.station_id = ?'); vals.push(req.query.station_id); }
+  if (req.user.role === 'location_partner') {
+    conds.push('s.host_partner_id = ?');
+    vals.push(req.user.id);
+  }
+  return {
+    where: conds.length ? ' WHERE ' + conds.join(' AND ') : '',
+    values: vals,
+  };
 }
 
 exports.getSummary = async (req, res, next) => {
   try {
     const { from, to } = resolveRange(req.query);
+    const { where, values } = rentalWhere(req, from, to);
 
-    // ---- SINGLE SOURCE OF TRUTH: the `rentals` table.
-    // This is exactly what the Rentals Management page reads, so the two
-    // dashboards are guaranteed to show identical figures.
-    const rConds = [];
-    const rVals = [];
-    if (from) { rConds.push('r.created_at >= ?'); rVals.push(fmt(from)); }
-    if (to)   { rConds.push('r.created_at <= ?'); rVals.push(fmt(to)); }
-    if (req.user.role === 'location_partner') {
-      rConds.push('s.host_partner_id = ?');
-      rVals.push(req.user.id);
-    }
-    const rWhere = rConds.length ? ' WHERE ' + rConds.join(' AND ') : '';
     const [rentalRows] = await db.query(
       `SELECT
          COUNT(*)                                AS rentals_count,
          COALESCE(SUM(r.total_amount), 0)        AS rental_charges,
          COALESCE(SUM(r.deposit_amount), 0)      AS deposits_collected,
-         COALESCE(SUM(CASE WHEN r.deposit_refunded = 1 THEN r.deposit_amount ELSE 0 END), 0) AS refunds_issued
+         COALESCE(SUM(CASE WHEN r.deposit_refunded = 1 THEN r.deposit_amount ELSE 0 END), 0) AS refunds_issued,
+         SUM(CASE WHEN r.status = 'active'    THEN 1 ELSE 0 END) AS active_count,
+         SUM(CASE WHEN r.status = 'completed' THEN 1 ELSE 0 END) AS completed_count,
+         SUM(CASE WHEN r.status = 'overdue'   THEN 1 ELSE 0 END) AS overdue_count
        FROM rentals r
        LEFT JOIN cb_stations s ON r.station_id = s.id
-       ${rWhere}`,
-      rVals,
+       ${where}`,
+      values,
     );
-    const rentalAgg = rentalRows[0] || {};
+    const r = rentalRows[0] || {};
 
-    // Transaction volume is shown only as an informational figure (gross M-Pesa
-    // movements). It is NOT used to compute revenue.
+    // Informational gross M-Pesa volume (NOT revenue)
     const tConds = ["t.status = 'completed'"];
     const tVals = [];
     if (from) { tConds.push('t.created_at >= ?'); tVals.push(fmt(from)); }
@@ -80,28 +98,18 @@ exports.getSummary = async (req, res, next) => {
       tVals.push(req.user.id);
     }
     const [txRows] = await db.query(
-      `SELECT
-         COUNT(*) AS total_transactions,
-         COALESCE(SUM(t.amount), 0) AS transaction_volume
+      `SELECT COUNT(*) AS total_transactions, COALESCE(SUM(t.amount), 0) AS transaction_volume
        FROM transactions t ${tJoin}
        WHERE ${tConds.join(' AND ')}`,
       tVals,
     );
-    const txAgg = txRows[0] || {};
+    const tx = txRows[0] || {};
 
-    const rental_charges     = Number(rentalAgg.rental_charges || 0);
-    const deposits_collected = Number(rentalAgg.deposits_collected || 0);
-    const refunds_issued     = Number(rentalAgg.refunds_issued || 0);
-
-    // Business model:
-    //   Customer pays deposit (e.g. 1000), we charge hourly (e.g. 100/hr),
-    //   on return we refund (deposit − charges). Our REVENUE is only the
-    //   rental charge (r.total_amount). Unrefunded deposits are liabilities
-    //   (active rentals not yet returned), NOT revenue.
-    //
-    //   Net Revenue = SUM(rental_charges)  — matches Rentals page "Total Revenue (Amount)"
-    const forfeited_deposits = 0;
-    const net_revenue        = rental_charges;
+    const rental_charges     = Number(r.rental_charges || 0);
+    const deposits_collected = Number(r.deposits_collected || 0);
+    const refunds_issued     = Number(r.refunds_issued || 0);
+    const deposits_held      = Math.max(deposits_collected - refunds_issued, 0);
+    const net_revenue        = rental_charges; // earned only
 
     res.json({
       success: true,
@@ -110,12 +118,16 @@ exports.getSummary = async (req, res, next) => {
         rental_charges,
         deposits_collected,
         refunds_issued,
-        forfeited_deposits,
-        rentals_count: Number(rentalAgg.rentals_count || 0),
+        deposits_held,
+        forfeited_deposits: 0, // model has no forfeiture
+        rentals_count: Number(r.rentals_count || 0),
+        active_rentals:    Number(r.active_count    || 0),
+        completed_rentals: Number(r.completed_count || 0),
+        overdue_rentals:   Number(r.overdue_count   || 0),
 
         // Informational only
-        transaction_volume: Number(txAgg.transaction_volume || 0),
-        total_transactions: Number(txAgg.total_transactions || 0),
+        transaction_volume: Number(tx.transaction_volume || 0),
+        total_transactions: Number(tx.total_transactions || 0),
 
         // Legacy aliases
         total_revenue:   net_revenue,
@@ -130,22 +142,20 @@ exports.getSummary = async (req, res, next) => {
 exports.getByStation = async (req, res, next) => {
   try {
     const { from, to } = resolveRange(req.query);
-    const { clause, values } = txDateClause(from, to, 't');
+    const { where, values } = rentalWhere(req, from, to);
 
-    let sql = `SELECT s.id, s.name, SUM(t.amount) as revenue, COUNT(t.id) as transactions
-               FROM transactions t
-               JOIN rentals r ON t.rental_id = r.id
-               JOIN cb_stations s ON r.station_id = s.id
-               WHERE t.status = 'completed'`;
-    const finalValues = [];
-    if (clause) { sql += ' AND ' + clause; finalValues.push(...values); }
-    if (req.user.role === 'location_partner') {
-      sql += ' AND s.host_partner_id = ?';
-      finalValues.push(req.user.id);
-    }
-    sql += ' GROUP BY s.id, s.name ORDER BY revenue DESC';
-
-    const [rows] = await db.query(sql, finalValues);
+    const [rows] = await db.query(
+      `SELECT s.id, s.name,
+              COALESCE(SUM(r.total_amount), 0)   AS revenue,
+              COALESCE(SUM(r.deposit_amount), 0) AS deposits,
+              COUNT(r.id)                        AS transactions
+       FROM rentals r
+       JOIN cb_stations s ON r.station_id = s.id
+       ${where}
+       GROUP BY s.id, s.name
+       ORDER BY revenue DESC`,
+      values,
+    );
     res.json({ success: true, data: rows });
   } catch (error) { next(error); }
 };
@@ -153,59 +163,44 @@ exports.getByStation = async (req, res, next) => {
 exports.getByMachine = async (req, res, next) => {
   try {
     const { from, to } = resolveRange(req.query);
-    const { clause, values } = txDateClause(from, to, 't');
+    const { where, values } = rentalWhere(req, from, to);
 
-    let sql = `SELECT m.id, m.name, s.name as station_name, SUM(t.amount) as revenue, COUNT(t.id) as transactions
-               FROM transactions t
-               JOIN rentals r ON t.rental_id = r.id
-               JOIN machines m ON r.machine_id = m.id
-               JOIN cb_stations s ON r.station_id = s.id
-               WHERE t.status = 'completed'`;
-    const finalValues = [];
-    if (clause) { sql += ' AND ' + clause; finalValues.push(...values); }
-    if (req.user.role === 'location_partner') {
-      sql += ' AND s.host_partner_id = ?';
-      finalValues.push(req.user.id);
-    }
-    sql += ' GROUP BY m.id, m.name, s.name ORDER BY revenue DESC';
-
-    const [rows] = await db.query(sql, finalValues);
+    const [rows] = await db.query(
+      `SELECT m.id, m.name, s.name AS station_name,
+              COALESCE(SUM(r.total_amount), 0) AS revenue,
+              COUNT(r.id)                      AS transactions
+       FROM rentals r
+       JOIN machines m     ON r.machine_id = m.id
+       JOIN cb_stations s  ON r.station_id = s.id
+       ${where}
+       GROUP BY m.id, m.name, s.name
+       ORDER BY revenue DESC`,
+      values,
+    );
     res.json({ success: true, data: rows });
   } catch (error) { next(error); }
 };
 
 exports.getOverTime = async (req, res, next) => {
   try {
-    const { period: rawPeriod } = req.query;
-    const periodFmt = rawPeriod === 'monthly' ? '%Y-%m'
-                     : rawPeriod === 'weekly' ? '%Y-%u'
-                     : '%Y-%m-%d';
+    const grain = req.query.period === 'monthly' ? '%Y-%m'
+                : req.query.period === 'weekly'  ? '%Y-%u'
+                : '%Y-%m-%d';
     const { from, to } = resolveRange(req.query);
-    const { clause, values } = txDateClause(from, to, 't');
+    const { where, values } = rentalWhere(req, from, to);
 
-    let sql = `SELECT DATE_FORMAT(t.created_at, ?) as period,
-                      SUM(t.amount) as revenue,
-                      COUNT(*) as transactions
-               FROM transactions t
-               WHERE t.status = 'completed'`;
-    const finalValues = [periodFmt];
-    if (clause) { sql += ' AND ' + clause; finalValues.push(...values); }
-
-    if (req.user.role === 'location_partner') {
-      sql = `SELECT DATE_FORMAT(t.created_at, ?) as period,
-                    SUM(t.amount) as revenue,
-                    COUNT(*) as transactions
-             FROM transactions t
-             JOIN rentals r ON t.rental_id = r.id
-             JOIN cb_stations s ON r.station_id = s.id
-             WHERE t.status = 'completed' AND s.host_partner_id = ?`;
-      finalValues.length = 0;
-      finalValues.push(periodFmt, req.user.id);
-      if (clause) { sql += ' AND ' + clause; finalValues.push(...values); }
-    }
-
-    sql += ' GROUP BY period ORDER BY period ASC LIMIT 60';
-    const [rows] = await db.query(sql, finalValues);
+    const [rows] = await db.query(
+      `SELECT DATE_FORMAT(r.created_at, ?) AS period,
+              COALESCE(SUM(r.total_amount), 0) AS revenue,
+              COUNT(*) AS transactions
+       FROM rentals r
+       LEFT JOIN cb_stations s ON r.station_id = s.id
+       ${where}
+       GROUP BY period
+       ORDER BY period ASC
+       LIMIT 60`,
+      [grain, ...values],
+    );
     res.json({ success: true, data: rows });
   } catch (error) { next(error); }
 };
@@ -213,14 +208,26 @@ exports.getOverTime = async (req, res, next) => {
 exports.getBreakdown = async (req, res, next) => {
   try {
     const { from, to } = resolveRange(req.query);
-    const { clause, values } = txDateClause(from, to, 't');
-    let sql = `SELECT t.transaction_type as type, SUM(t.amount) as value, COUNT(*) as count
-               FROM transactions t WHERE t.status = 'completed'`;
-    const finalValues = [];
-    if (clause) { sql += ' AND ' + clause; finalValues.push(...values); }
-    sql += ' GROUP BY t.transaction_type';
-    const [rows] = await db.query(sql, finalValues);
-    res.json({ success: true, data: rows });
+    const { where, values } = rentalWhere(req, from, to);
+
+    // Show the actual revenue composition from the rentals table.
+    const [rows] = await db.query(
+      `SELECT
+         COALESCE(SUM(r.total_amount), 0)   AS rental_charges,
+         COALESCE(SUM(r.deposit_amount), 0) AS deposits_collected,
+         COALESCE(SUM(CASE WHEN r.deposit_refunded = 1 THEN r.deposit_amount ELSE 0 END), 0) AS refunds_issued
+       FROM rentals r
+       LEFT JOIN cb_stations s ON r.station_id = s.id
+       ${where}`,
+      values,
+    );
+    const a = rows[0] || {};
+    const data = [
+      { type: 'rental_charge', value: Number(a.rental_charges     || 0), count: 0 },
+      { type: 'deposit',       value: Number(a.deposits_collected || 0), count: 0 },
+      { type: 'refund',        value: Number(a.refunds_issued     || 0), count: 0 },
+    ].filter((x) => x.value > 0);
+    res.json({ success: true, data });
   } catch (error) { next(error); }
 };
 
