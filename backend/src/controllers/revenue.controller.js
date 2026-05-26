@@ -42,9 +42,9 @@ exports.getSummary = async (req, res, next) => {
   try {
     const { from, to } = resolveRange(req.query);
 
-    // ---- Source of truth for rental charges & deposits = `rentals` table.
-    // This matches the Rentals Management page exactly so the two dashboards
-    // can never drift apart.
+    // ---- SINGLE SOURCE OF TRUTH: the `rentals` table.
+    // This is exactly what the Rentals Management page reads, so the two
+    // dashboards are guaranteed to show identical figures.
     const rConds = [];
     const rVals = [];
     if (from) { rConds.push('r.created_at >= ?'); rVals.push(fmt(from)); }
@@ -56,10 +56,10 @@ exports.getSummary = async (req, res, next) => {
     const rWhere = rConds.length ? ' WHERE ' + rConds.join(' AND ') : '';
     const [rentalRows] = await db.query(
       `SELECT
-         COALESCE(SUM(r.total_amount), 0)   AS rental_charges,
-         COALESCE(SUM(r.deposit_amount), 0) AS deposits_collected,
-         COALESCE(SUM(CASE WHEN r.deposit_refunded = 1 THEN r.deposit_amount ELSE 0 END), 0) AS deposits_refunded_from_rentals,
-         COUNT(*) AS rentals_count
+         COUNT(*)                                AS rentals_count,
+         COALESCE(SUM(r.total_amount), 0)        AS rental_charges,
+         COALESCE(SUM(r.deposit_amount), 0)      AS deposits_collected,
+         COALESCE(SUM(CASE WHEN r.deposit_refunded = 1 THEN r.deposit_amount ELSE 0 END), 0) AS refunds_issued
        FROM rentals r
        LEFT JOIN cb_stations s ON r.station_id = s.id
        ${rWhere}`,
@@ -67,7 +67,8 @@ exports.getSummary = async (req, res, next) => {
     );
     const rentalAgg = rentalRows[0] || {};
 
-    // ---- Refunds & raw transaction stats from `transactions` table.
+    // Transaction volume is shown only as an informational figure (gross M-Pesa
+    // movements). It is NOT used to compute revenue.
     const tConds = ["t.status = 'completed'"];
     const tVals = [];
     if (from) { tConds.push('t.created_at >= ?'); tVals.push(fmt(from)); }
@@ -81,8 +82,7 @@ exports.getSummary = async (req, res, next) => {
     const [txRows] = await db.query(
       `SELECT
          COUNT(*) AS total_transactions,
-         COALESCE(SUM(t.amount), 0) AS transaction_volume,
-         COALESCE(SUM(CASE WHEN t.transaction_type = 'refund' THEN t.amount ELSE 0 END), 0) AS refunds_issued
+         COALESCE(SUM(t.amount), 0) AS transaction_volume
        FROM transactions t ${tJoin}
        WHERE ${tConds.join(' AND ')}`,
       tVals,
@@ -91,22 +91,16 @@ exports.getSummary = async (req, res, next) => {
 
     const rental_charges     = Number(rentalAgg.rental_charges || 0);
     const deposits_collected = Number(rentalAgg.deposits_collected || 0);
-    // Prefer the rentals-table refund total if larger (some refunds aren't logged
-    // as a separate transaction). Otherwise use the transactions figure.
-    const refunds_from_rentals = Number(rentalAgg.deposits_refunded_from_rentals || 0);
-    const refunds_from_tx      = Number(txAgg.refunds_issued || 0);
-    const refunds_issued       = Math.max(refunds_from_rentals, refunds_from_tx);
+    const refunds_issued     = Number(rentalAgg.refunds_issued || 0);
 
     // Accountant's formula:
     //   Net Revenue = Rental Charges + (Deposits Collected − Refunds Issued)
-    // The (deposits − refunds) part = deposits the customer forfeited.
     const forfeited_deposits = Math.max(deposits_collected - refunds_issued, 0);
     const net_revenue        = rental_charges + forfeited_deposits;
 
     res.json({
       success: true,
       data: {
-        // Canonical accounting figures (consistent with Rentals page)
         net_revenue,
         rental_charges,
         deposits_collected,
@@ -114,12 +108,11 @@ exports.getSummary = async (req, res, next) => {
         forfeited_deposits,
         rentals_count: Number(rentalAgg.rentals_count || 0),
 
-        // Raw transaction figures (informational, NOT revenue)
+        // Informational only
         transaction_volume: Number(txAgg.transaction_volume || 0),
         total_transactions: Number(txAgg.total_transactions || 0),
 
-        // Legacy field names — kept for backward compatibility, now mapped
-        // to the corrected definitions.
+        // Legacy aliases
         total_revenue:   net_revenue,
         rental_revenue:  rental_charges,
         deposit_revenue: deposits_collected,
