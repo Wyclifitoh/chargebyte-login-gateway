@@ -93,10 +93,15 @@ exports.getSummary = async (req, res, next) => {
     const deposits_collected = Number(rentalAgg.deposits_collected || 0);
     const refunds_issued     = Number(rentalAgg.refunds_issued || 0);
 
-    // Accountant's formula:
-    //   Net Revenue = Rental Charges + (Deposits Collected − Refunds Issued)
-    const forfeited_deposits = Math.max(deposits_collected - refunds_issued, 0);
-    const net_revenue        = rental_charges + forfeited_deposits;
+    // Business model:
+    //   Customer pays deposit (e.g. 1000), we charge hourly (e.g. 100/hr),
+    //   on return we refund (deposit − charges). Our REVENUE is only the
+    //   rental charge (r.total_amount). Unrefunded deposits are liabilities
+    //   (active rentals not yet returned), NOT revenue.
+    //
+    //   Net Revenue = SUM(rental_charges)  — matches Rentals page "Total Revenue (Amount)"
+    const forfeited_deposits = 0;
+    const net_revenue        = rental_charges;
 
     res.json({
       success: true,
