@@ -215,7 +215,7 @@ exports.getBreakdown = async (req, res, next) => {
       `SELECT
          COALESCE(SUM(r.total_amount), 0)   AS rental_charges,
          COALESCE(SUM(r.deposit_amount), 0) AS deposits_collected,
-         COALESCE(SUM(CASE WHEN r.deposit_refunded = 1 THEN r.deposit_amount ELSE 0 END), 0) AS refunds_issued
+         COALESCE(SUM(r.deposit_refunded), 0) AS refunds_issued
        FROM rentals r
        LEFT JOIN cb_stations s ON r.station_id = s.id
        ${where}`,
