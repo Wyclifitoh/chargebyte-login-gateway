@@ -192,6 +192,53 @@ const RentalsPage = () => {
     setSmsMessage(`Hi, regarding your rental ${r.rental_code}: `);
   };
 
+  const openRefund = (r: RentalRow, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const owed = Math.max(
+      Number(r.deposit_amount || 0) - Number(r.deposit_refunded || 0),
+      0,
+    );
+    setRefundTarget(r);
+    setRefundAmount(String(owed || r.deposit_amount || 0));
+    setRefundRemarks(`Refund for rental ${r.rental_code}`);
+    setRefundPin("");
+  };
+
+  const sendRefund = async () => {
+    if (!refundTarget) return;
+    const amt = Number(refundAmount);
+    if (!amt || amt <= 0) {
+      toast.error("Enter a valid refund amount");
+      return;
+    }
+    if (!/^\d{4}$/.test(refundPin)) {
+      toast.error("Enter your 4-digit transaction PIN");
+      return;
+    }
+    setRefundSending(true);
+    try {
+      const res = await api.mpesa.b2c({
+        phone_number: refundTarget.phone_number,
+        amount: amt,
+        remarks: refundRemarks || `Refund ${refundTarget.rental_code}`,
+        occasion: refundTarget.rental_code,
+        pin: refundPin,
+      });
+      if (res.success) {
+        toast.success(`Refund of Ksh ${amt} queued to ${refundTarget.phone_number}`);
+        setRefundTarget(null);
+        refetch();
+      } else {
+        toast.error(res.error || "Refund failed");
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Refund failed");
+    } finally {
+      setRefundSending(false);
+    }
+  };
+
+
   const exportExcel = async () => {
     setExporting(true);
     try {
