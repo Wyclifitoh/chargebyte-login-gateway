@@ -96,6 +96,14 @@ const RentalsPage = () => {
   const [smsSending, setSmsSending] = useState(false);
   const [exporting, setExporting] = useState(false);
 
+  // Manual refund (B2C) state
+  const [refundTarget, setRefundTarget] = useState<RentalRow | null>(null);
+  const [refundAmount, setRefundAmount] = useState("");
+  const [refundRemarks, setRefundRemarks] = useState("");
+  const [refundPin, setRefundPin] = useState("");
+  const [refundSending, setRefundSending] = useState(false);
+
+
   const { data: stations } = useStations();
   const { data: machines } = useMachines();
 
