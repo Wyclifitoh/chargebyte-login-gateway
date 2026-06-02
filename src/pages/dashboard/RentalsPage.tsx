@@ -638,7 +638,11 @@ const RentalsPage = () => {
               {smsSending ? "Sending..." : "Send SMS"}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Manual B2C Refund Dialog */}
+
       <Dialog open={!!refundTarget} onOpenChange={(open) => !open && setRefundTarget(null)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
