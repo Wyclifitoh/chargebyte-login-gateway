@@ -638,6 +638,74 @@ const RentalsPage = () => {
               {smsSending ? "Sending..." : "Send SMS"}
             </Button>
           </DialogFooter>
+      {/* Manual B2C Refund Dialog */}
+      <Dialog open={!!refundTarget} onOpenChange={(open) => !open && setRefundTarget(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Manual M-Pesa Refund (B2C)</DialogTitle>
+            <DialogDescription>
+              {refundTarget && (
+                <>
+                  Refund the customer for rental{" "}
+                  <span className="font-mono">{refundTarget.rental_code}</span>. Funds will
+                  be sent via Safaricom B2C to the rental phone number.
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div>
+              <label className="text-sm font-medium mb-1.5 block">Phone Number</label>
+              <Input value={refundTarget?.phone_number || ""} disabled readOnly />
+              <p className="text-xs text-muted-foreground mt-1">
+                Locked to the rental's registered phone number.
+              </p>
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1.5 block">Amount (Ksh)</label>
+              <Input
+                type="number"
+                value={refundAmount}
+                onChange={(e) => setRefundAmount(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1.5 block">Remarks</label>
+              <Input
+                value={refundRemarks}
+                onChange={(e) => setRefundRemarks(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1.5 block">
+                Transaction PIN (4 digits)
+              </label>
+              <Input
+                type="password"
+                inputMode="numeric"
+                maxLength={4}
+                value={refundPin}
+                onChange={(e) => setRefundPin(e.target.value.replace(/\D/g, ""))}
+                placeholder="••••"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setRefundTarget(null)}
+              disabled={refundSending}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={sendRefund}
+              disabled={refundSending || !refundAmount || refundPin.length !== 4}
+            >
+              <Send className="h-4 w-4 mr-2" />
+              {refundSending ? "Sending..." : "Send Refund"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
@@ -645,3 +713,4 @@ const RentalsPage = () => {
 };
 
 export default RentalsPage;
+
