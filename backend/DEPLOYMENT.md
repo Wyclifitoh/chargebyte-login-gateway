@@ -38,7 +38,7 @@ sudo mysql -u root -p
 
 ```sql
 CREATE DATABASE chargebyte_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-CREATE USER 'chargebyte_user'@'localhost' IDENTIFIED BY 'ChargeByteDB2026';
+CREATE USER 'chargebyte_user'@'localhost' IDENTIFIED BY 'YOUR_STRONG_PASSWORD';
 GRANT ALL PRIVILEGES ON chargebyte_db.* TO 'chargebyte_user'@'localhost';
 FLUSH PRIVILEGES;
 EXIT;
