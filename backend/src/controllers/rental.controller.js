@@ -141,7 +141,7 @@ exports.getSummary = async (req, res, next) => {
          COUNT(*)                                AS total_rentals,
          COALESCE(SUM(r.total_amount), 0)        AS total_amount,
          COALESCE(SUM(r.deposit_amount), 0)      AS total_deposits,
-         COALESCE(SUM(CASE WHEN r.deposit_refunded = 1 THEN r.deposit_amount ELSE 0 END), 0) AS total_refunded,
+         COALESCE(SUM(r.deposit_refunded), 0) AS total_refunded,
          COALESCE(SUM(r.duration_minutes), 0)    AS total_duration_minutes,
          SUM(CASE WHEN r.status = 'active'    THEN 1 ELSE 0 END) AS active_count,
          SUM(CASE WHEN r.status = 'completed' THEN 1 ELSE 0 END) AS completed_count,

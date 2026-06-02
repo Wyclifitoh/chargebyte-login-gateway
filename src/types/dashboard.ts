@@ -70,7 +70,7 @@ export interface Rental {
   deposit_refunded: boolean;
   deposit_refund_time?: string;
   phone_number: string;
-  status: "active" | "completed" | "overdue" | "cancelled";
+  status: "active" | "completed" | "overdue" | "cancelled" | "pending" | "pending_payment";
   return_station_id?: string;
   return_machine_id?: string;
   return_slot?: number;

@@ -96,6 +96,14 @@ const RentalsPage = () => {
   const [smsSending, setSmsSending] = useState(false);
   const [exporting, setExporting] = useState(false);
 
+  // Manual refund (B2C) state
+  const [refundTarget, setRefundTarget] = useState<RentalRow | null>(null);
+  const [refundAmount, setRefundAmount] = useState("");
+  const [refundRemarks, setRefundRemarks] = useState("");
+  const [refundPin, setRefundPin] = useState("");
+  const [refundSending, setRefundSending] = useState(false);
+
+
   const { data: stations } = useStations();
   const { data: machines } = useMachines();
 
@@ -183,6 +191,53 @@ const RentalsPage = () => {
     setSmsPhone(r.phone_number || "");
     setSmsMessage(`Hi, regarding your rental ${r.rental_code}: `);
   };
+
+  const openRefund = (r: RentalRow, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const owed = Math.max(
+      Number(r.deposit_amount || 0) - Number(r.deposit_refunded || 0),
+      0,
+    );
+    setRefundTarget(r);
+    setRefundAmount(String(owed || r.deposit_amount || 0));
+    setRefundRemarks(`Refund for rental ${r.rental_code}`);
+    setRefundPin("");
+  };
+
+  const sendRefund = async () => {
+    if (!refundTarget) return;
+    const amt = Number(refundAmount);
+    if (!amt || amt <= 0) {
+      toast.error("Enter a valid refund amount");
+      return;
+    }
+    if (!/^\d{4}$/.test(refundPin)) {
+      toast.error("Enter your 4-digit transaction PIN");
+      return;
+    }
+    setRefundSending(true);
+    try {
+      const res = await api.mpesa.b2c({
+        phone_number: refundTarget.phone_number,
+        amount: amt,
+        remarks: refundRemarks || `Refund ${refundTarget.rental_code}`,
+        occasion: refundTarget.rental_code,
+        pin: refundPin,
+      });
+      if (res.success) {
+        toast.success(`Refund of Ksh ${amt} queued to ${refundTarget.phone_number}`);
+        setRefundTarget(null);
+        refetch();
+      } else {
+        toast.error(res.error || "Refund failed");
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Refund failed");
+    } finally {
+      setRefundSending(false);
+    }
+  };
+
 
   const exportExcel = async () => {
     setExporting(true);
@@ -418,26 +473,42 @@ const RentalsPage = () => {
                     </td>
                     <td className="px-3 py-3 text-foreground">{formatKsh(r.deposit_amount)}</td>
                     <td className="px-3 py-3">
-                      {r.deposit_refunded ? (
-                        <span className="text-green-600 font-medium">Yes</span>
+                      {Number(r.deposit_refunded) > 0 ? (
+                        <span className="text-green-600 font-medium">
+                          {formatKsh(Number(r.deposit_refunded))}
+                        </span>
                       ) : (
-                        <span className="text-muted-foreground">No</span>
+                        <span className="text-muted-foreground">—</span>
                       )}
                     </td>
                     <td className="px-3 py-3">
                       <StatusBadge status={r.status} />
                     </td>
                     <td className="px-3 py-3 text-right">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={(e) => openSms(r, e)}
-                        className="h-8"
-                      >
-                        <MessageSquare className="h-3.5 w-3.5 mr-1.5" />
-                        SMS
-                      </Button>
+                      <div className="flex justify-end gap-1.5">
+                        {(r.status === "pending" || r.status === "pending_payment") && (
+                          <Button
+                            size="sm"
+                            variant="default"
+                            onClick={(e) => openRefund(r, e)}
+                            className="h-8"
+                          >
+                            <Wallet className="h-3.5 w-3.5 mr-1.5" />
+                            Refund
+                          </Button>
+                        )}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={(e) => openSms(r, e)}
+                          className="h-8"
+                        >
+                          <MessageSquare className="h-3.5 w-3.5 mr-1.5" />
+                          SMS
+                        </Button>
+                      </div>
                     </td>
+
                   </tr>
                 ))}
                 {sorted.length === 0 && (
@@ -569,8 +640,81 @@ const RentalsPage = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Manual B2C Refund Dialog */}
+
+      <Dialog open={!!refundTarget} onOpenChange={(open) => !open && setRefundTarget(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Manual M-Pesa Refund (B2C)</DialogTitle>
+            <DialogDescription>
+              {refundTarget && (
+                <>
+                  Refund the customer for rental{" "}
+                  <span className="font-mono">{refundTarget.rental_code}</span>. Funds will
+                  be sent via Safaricom B2C to the rental phone number.
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div>
+              <label className="text-sm font-medium mb-1.5 block">Phone Number</label>
+              <Input value={refundTarget?.phone_number || ""} disabled readOnly />
+              <p className="text-xs text-muted-foreground mt-1">
+                Locked to the rental's registered phone number.
+              </p>
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1.5 block">Amount (Ksh)</label>
+              <Input
+                type="number"
+                value={refundAmount}
+                onChange={(e) => setRefundAmount(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1.5 block">Remarks</label>
+              <Input
+                value={refundRemarks}
+                onChange={(e) => setRefundRemarks(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1.5 block">
+                Transaction PIN (4 digits)
+              </label>
+              <Input
+                type="password"
+                inputMode="numeric"
+                maxLength={4}
+                value={refundPin}
+                onChange={(e) => setRefundPin(e.target.value.replace(/\D/g, ""))}
+                placeholder="••••"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setRefundTarget(null)}
+              disabled={refundSending}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={sendRefund}
+              disabled={refundSending || !refundAmount || refundPin.length !== 4}
+            >
+              <Send className="h-4 w-4 mr-2" />
+              {refundSending ? "Sending..." : "Send Refund"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
 
 export default RentalsPage;
+
