@@ -473,26 +473,42 @@ const RentalsPage = () => {
                     </td>
                     <td className="px-3 py-3 text-foreground">{formatKsh(r.deposit_amount)}</td>
                     <td className="px-3 py-3">
-                      {r.deposit_refunded ? (
-                        <span className="text-green-600 font-medium">Yes</span>
+                      {Number(r.deposit_refunded) > 0 ? (
+                        <span className="text-green-600 font-medium">
+                          {formatKsh(Number(r.deposit_refunded))}
+                        </span>
                       ) : (
-                        <span className="text-muted-foreground">No</span>
+                        <span className="text-muted-foreground">—</span>
                       )}
                     </td>
                     <td className="px-3 py-3">
                       <StatusBadge status={r.status} />
                     </td>
                     <td className="px-3 py-3 text-right">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={(e) => openSms(r, e)}
-                        className="h-8"
-                      >
-                        <MessageSquare className="h-3.5 w-3.5 mr-1.5" />
-                        SMS
-                      </Button>
+                      <div className="flex justify-end gap-1.5">
+                        {(r.status === "pending" || r.status === "pending_payment") && (
+                          <Button
+                            size="sm"
+                            variant="default"
+                            onClick={(e) => openRefund(r, e)}
+                            className="h-8"
+                          >
+                            <Wallet className="h-3.5 w-3.5 mr-1.5" />
+                            Refund
+                          </Button>
+                        )}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={(e) => openSms(r, e)}
+                          className="h-8"
+                        >
+                          <MessageSquare className="h-3.5 w-3.5 mr-1.5" />
+                          SMS
+                        </Button>
+                      </div>
                     </td>
+
                   </tr>
                 ))}
                 {sorted.length === 0 && (
