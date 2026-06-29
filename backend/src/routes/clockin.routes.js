@@ -21,6 +21,8 @@ router.put('/whitelist/:id', authorize('super_admin', 'admin'), auditLog('UPDATE
 router.delete('/whitelist/:id', authorize('super_admin'), auditLog('DELETE', 'clockin_whitelist'), c.removeWhitelist);
 
 // Daily reports
+// Daily reports
+router.get('/shift-summary', c.shiftSummary);                           // auto-pre-fill for current agent
 router.get('/reports', c.listReports);                                  // self or admin (filtered in controller)
 router.post('/reports', auditLog('CREATE', 'daily_reports'), c.upsertReport);
 router.delete('/reports/:id', authorize('super_admin'), auditLog('DELETE', 'daily_reports'), c.deleteReport);

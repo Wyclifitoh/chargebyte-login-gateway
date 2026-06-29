@@ -294,6 +294,74 @@ exports.summary = async (_req, res, next) => {
   } catch (e) { next(e); }
 };
 
+// ---------- shift summary (auto-pre-fill for daily report) ----------
+exports.shiftSummary = async (req, res, next) => {
+  try {
+    const date = (req.query.date && String(req.query.date)) ||
+      new Date().toLocaleDateString('en-CA', { timeZone: 'Africa/Nairobi' }); // YYYY-MM-DD in Nairobi
+
+    // Today's clock events for this agent
+    const [ev] = await db.query(
+      `SELECT event_type, event_time, station_id, location_name
+       FROM clock_events
+       WHERE system_user_id = ? AND status = 'approved'
+         AND DATE(CONVERT_TZ(event_time, '+00:00', '+03:00')) = ?
+       ORDER BY event_time ASC`,
+      [req.user.id, date]
+    );
+    const firstIn = ev.find(e => e.event_type === 'clock_in') || null;
+    const lastOut = [...ev].reverse().find(e => e.event_type === 'clock_out') || null;
+    const station_id = firstIn?.station_id || null;
+    const location = firstIn?.location_name || null;
+
+    let hours_worked = 0;
+    if (firstIn && lastOut) {
+      hours_worked = Math.max(0, (new Date(lastOut.event_time) - new Date(firstIn.event_time)) / 3_600_000);
+    } else if (firstIn) {
+      hours_worked = Math.max(0, (Date.now() - new Date(firstIn.event_time).getTime()) / 3_600_000);
+    }
+
+    // Auto rental metrics for this station/date
+    let rentals_auto = 0, returns_auto = 0, pending_auto = 0;
+    if (station_id) {
+      const [[r]] = await db.query(
+        `SELECT
+           SUM(DATE(CONVERT_TZ(start_time, '+00:00', '+03:00')) = ?) AS rentals,
+           SUM(end_time IS NOT NULL AND DATE(CONVERT_TZ(end_time, '+00:00', '+03:00')) = ?) AS returns,
+           SUM(end_time IS NULL AND DATE(CONVERT_TZ(start_time, '+00:00', '+03:00')) = ?) AS pending
+         FROM rentals WHERE station_id = ?`,
+        [date, date, date, station_id]
+      );
+      rentals_auto = Number(r?.rentals || 0);
+      returns_auto = Number(r?.returns || 0);
+      pending_auto = Number(r?.pending || 0);
+    }
+
+    // Existing report for this date (if any)
+    const [existing] = await db.query(
+      `SELECT * FROM daily_reports
+       WHERE agent_user_id = ? AND report_date = ?
+       ORDER BY created_at DESC LIMIT 1`,
+      [req.user.id, date]
+    );
+
+    res.json({
+      success: true,
+      data: {
+        report_date: date,
+        station_id,
+        location,
+        time_in: firstIn?.event_time || null,
+        time_out: lastOut?.event_time || null,
+        hours_worked: Math.round(hours_worked * 100) / 100,
+        rentals_auto, returns_auto, pending_auto,
+        is_clocked_out: !!lastOut,
+        existing_report: existing[0] || null,
+      },
+    });
+  } catch (e) { next(e); }
+};
+
 // ---------- daily reports ----------
 exports.listReports = async (req, res, next) => {
   try {
@@ -320,19 +388,32 @@ exports.upsertReport = async (req, res, next) => {
       rentals = 0, returns = 0, pending_returns = 0,
       powerbanks_arrival = 0, powerbanks_departure = 0,
       time_in, time_out, notes,
+      // observation fields (Phase 4)
+      machine_cleanliness = null,
+      customer_feedback = null,
+      issues_observed = null,
+      competitor_activity = null,
+      marketing_activities = null,
+      suggestions = null,
+      photos = null,
     } = req.body;
     if (!location) return res.status(400).json({ success: false, error: 'location required' });
-    const date = report_date || new Date().toISOString().slice(0, 10);
+    const date = report_date || new Date().toLocaleDateString('en-CA', { timeZone: 'Africa/Nairobi' });
 
-    // Auto-pull rentals count for this agent's location/date if station_id is set
-    let rentalsAuto = 0;
+    // Auto-pull rentals/returns/pending for this agent's station/date
+    let rentalsAuto = 0, returnsAuto = 0, pendingAuto = 0;
     if (station_id) {
-      const [r] = await db.query(
-        `SELECT COUNT(*) AS c FROM rentals
-         WHERE station_id = ? AND DATE(CONVERT_TZ(start_time, '+00:00', '+03:00')) = ?`,
-        [station_id, date]
+      const [[r]] = await db.query(
+        `SELECT
+           SUM(DATE(CONVERT_TZ(start_time, '+00:00', '+03:00')) = ?) AS r,
+           SUM(end_time IS NOT NULL AND DATE(CONVERT_TZ(end_time, '+00:00', '+03:00')) = ?) AS rt,
+           SUM(end_time IS NULL AND DATE(CONVERT_TZ(start_time, '+00:00', '+03:00')) = ?) AS p
+         FROM rentals WHERE station_id = ?`,
+        [date, date, date, station_id]
       );
-      rentalsAuto = r[0]?.c || 0;
+      rentalsAuto = Number(r?.r || 0);
+      returnsAuto = Number(r?.rt || 0);
+      pendingAuto = Number(r?.p || 0);
     }
 
     // Pull time_in/time_out from clock_events if not provided
@@ -351,6 +432,9 @@ exports.upsertReport = async (req, res, next) => {
       if (!to_ && outs.length) to_ = outs[outs.length - 1].event_time;
     }
 
+    const photosJson = photos ? JSON.stringify(photos) : null;
+    const subAt = new Date();
+
     const [existing] = await db.query(
       `SELECT id FROM daily_reports WHERE agent_user_id = ? AND report_date = ? AND location = ? LIMIT 1`,
       [req.user.id, date, location]
@@ -360,10 +444,17 @@ exports.upsertReport = async (req, res, next) => {
       await db.query(
         `UPDATE daily_reports SET station_id = ?, rentals = ?, returns = ?, pending_returns = ?,
            powerbanks_arrival = ?, powerbanks_departure = ?, time_in = ?, time_out = ?,
-           rentals_auto = ?, notes = ?
+           rentals_auto = ?, returns_auto = ?, pending_auto = ?, notes = ?,
+           machine_cleanliness = ?, customer_feedback = ?, issues_observed = ?,
+           competitor_activity = ?, marketing_activities = ?, suggestions = ?,
+           photos_json = ?, submitted_at = ?
          WHERE id = ?`,
         [station_id || null, rentals, returns, pending_returns,
-         powerbanks_arrival, powerbanks_departure, ti, to_, rentalsAuto, notes || null, existing[0].id]
+         powerbanks_arrival, powerbanks_departure, ti, to_,
+         rentalsAuto, returnsAuto, pendingAuto, notes || null,
+         machine_cleanliness, customer_feedback, issues_observed,
+         competitor_activity, marketing_activities, suggestions,
+         photosJson, subAt, existing[0].id]
       );
       return res.json({ success: true, data: { id: existing[0].id, updated: true } });
     }
@@ -373,11 +464,18 @@ exports.upsertReport = async (req, res, next) => {
       `INSERT INTO daily_reports
        (id, report_date, agent_user_id, agent_name, station_id, location,
         rentals, returns, pending_returns, powerbanks_arrival, powerbanks_departure,
-        time_in, time_out, rentals_auto, notes)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        time_in, time_out, rentals_auto, returns_auto, pending_auto, notes,
+        machine_cleanliness, customer_feedback, issues_observed,
+        competitor_activity, marketing_activities, suggestions,
+        photos_json, submitted_at)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       [id, date, req.user.id, req.user.full_name || req.user.name || req.user.email,
        station_id || null, location, rentals, returns, pending_returns,
-       powerbanks_arrival, powerbanks_departure, ti, to_, rentalsAuto, notes || null]
+       powerbanks_arrival, powerbanks_departure, ti, to_,
+       rentalsAuto, returnsAuto, pendingAuto, notes || null,
+       machine_cleanliness, customer_feedback, issues_observed,
+       competitor_activity, marketing_activities, suggestions,
+       photosJson, subAt]
     );
     res.status(201).json({ success: true, data: { id } });
   } catch (e) { next(e); }

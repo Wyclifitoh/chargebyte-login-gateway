@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Clock, LogIn, LogOut, ShieldCheck, ShieldAlert, Plus, Trash2, MapPin } from "lucide-react";
+import { Clock, LogIn, LogOut, ShieldCheck, ShieldAlert, Plus, Trash2, MapPin, ClipboardList } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader, TableSkeleton, EmptyState, ConfirmDialog } from "@/components/shared";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { api } from "@/services/api";
 import { useAuth } from "@/contexts/AuthContext";
+import { ShiftReportDialog } from "@/components/clockin/ShiftReportDialog";
 import type { ClockEvent, ClockWhitelist, Station } from "@/types/dashboard";
 
 const REFRESH_MS = 7000;
@@ -38,6 +39,7 @@ type GeoState =
 
 // --------- Staff/Agent self-clock UI ---------
 const SelfClock = () => {
+  const { user } = useAuth();
   const [events, setEvents] = useState<ClockEvent[]>([]);
   const [stations, setStations] = useState<Station[]>([]);
   const [stationId, setStationId] = useState<string>("");
@@ -45,6 +47,7 @@ const SelfClock = () => {
   const [busy, setBusy] = useState(false);
   const [geo, setGeo] = useState<GeoState>({ status: "idle" });
   const [geoFences, setGeoFences] = useState<ClockWhitelist[]>([]);
+  const [reportOpen, setReportOpen] = useState(false);
 
   const load = async () => {
     const res = await api.clockin.myEvents();
@@ -112,8 +115,15 @@ const SelfClock = () => {
         station_id: stationId || undefined,
         location_name: station?.name,
       });
-      if (res.success) toast.success(event_type === "clock_in" ? "Clocked in" : "Clocked out");
-      else toast.error(res.error || "Rejected — outside allowed area");
+      if (res.success) {
+        toast.success(event_type === "clock_in" ? "Clocked in" : "Clocked out");
+        if (event_type === "clock_out") {
+          // Auto-open shift report so the agent submits observations immediately
+          setTimeout(() => setReportOpen(true), 400);
+        }
+      } else {
+        toast.error(res.error || "Rejected — outside allowed area");
+      }
       load();
     } finally { setBusy(false); }
   };
@@ -172,19 +182,24 @@ const SelfClock = () => {
           )}
         </div>
 
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3 justify-center">
           <Button onClick={() => submit("clock_in")} disabled={busy || isClockedIn || blockedByGeo || geo.status !== "ok"}>
             <LogIn className="h-4 w-4 mr-2" /> Clock In
           </Button>
           <Button variant="outline" onClick={() => submit("clock_out")} disabled={busy || !isClockedIn || geo.status !== "ok"}>
             <LogOut className="h-4 w-4 mr-2" /> Clock Out
           </Button>
+          <Button variant="secondary" onClick={() => setReportOpen(true)}>
+            <ClipboardList className="h-4 w-4 mr-2" /> Shift Report
+          </Button>
         </div>
         <p className="text-xs text-muted-foreground mt-4 max-w-md">
           Your device GPS is checked against the allowed area. Clock-in is only permitted within the configured radius and during allowed hours (04:00–24:00 EAT).
+          When you clock out, a shift report opens automatically — rentals, returns and hours are pre-filled.
         </p>
 
       </div>
+
 
       <div className="bg-card border border-border rounded-lg overflow-hidden">
         <div className="px-4 py-3 border-b border-border font-medium">Your recent activity</div>
@@ -223,6 +238,12 @@ const SelfClock = () => {
           </table>
         )}
       </div>
+
+      <ShiftReportDialog
+        open={reportOpen}
+        onOpenChange={setReportOpen}
+        agentName={user?.name || user?.email || "Agent"}
+      />
     </div>
   );
 };
