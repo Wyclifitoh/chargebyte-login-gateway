@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Clock, LogIn, LogOut, ShieldCheck, ShieldAlert, Plus, Trash2, MapPin } from "lucide-react";
+import { Clock, LogIn, LogOut, ShieldCheck, ShieldAlert, Plus, Trash2, MapPin, ClipboardList } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader, TableSkeleton, EmptyState, ConfirmDialog } from "@/components/shared";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { api } from "@/services/api";
 import { useAuth } from "@/contexts/AuthContext";
+import { ShiftReportDialog } from "@/components/clockin/ShiftReportDialog";
 import type { ClockEvent, ClockWhitelist, Station } from "@/types/dashboard";
 
 const REFRESH_MS = 7000;
@@ -38,6 +39,7 @@ type GeoState =
 
 // --------- Staff/Agent self-clock UI ---------
 const SelfClock = () => {
+  const { user } = useAuth();
   const [events, setEvents] = useState<ClockEvent[]>([]);
   const [stations, setStations] = useState<Station[]>([]);
   const [stationId, setStationId] = useState<string>("");
@@ -45,6 +47,7 @@ const SelfClock = () => {
   const [busy, setBusy] = useState(false);
   const [geo, setGeo] = useState<GeoState>({ status: "idle" });
   const [geoFences, setGeoFences] = useState<ClockWhitelist[]>([]);
+  const [reportOpen, setReportOpen] = useState(false);
 
   const load = async () => {
     const res = await api.clockin.myEvents();
@@ -112,8 +115,15 @@ const SelfClock = () => {
         station_id: stationId || undefined,
         location_name: station?.name,
       });
-      if (res.success) toast.success(event_type === "clock_in" ? "Clocked in" : "Clocked out");
-      else toast.error(res.error || "Rejected — outside allowed area");
+      if (res.success) {
+        toast.success(event_type === "clock_in" ? "Clocked in" : "Clocked out");
+        if (event_type === "clock_out") {
+          // Auto-open shift report so the agent submits observations immediately
+          setTimeout(() => setReportOpen(true), 400);
+        }
+      } else {
+        toast.error(res.error || "Rejected — outside allowed area");
+      }
       load();
     } finally { setBusy(false); }
   };
