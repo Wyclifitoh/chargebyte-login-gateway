@@ -313,6 +313,7 @@ export const api = {
     events: (params?: Record<string, string | number | undefined>) =>
       apiGet(`/clockin/events${buildQS(params)}`),
     summary: () => apiGet("/clockin/summary"),
+    shiftSummary: (date?: string) => apiGet(`/clockin/shift-summary${date ? `?date=${date}` : ""}`),
     whitelist: {
       list: () => apiGet("/clockin/whitelist"),
       create: (data: unknown) => apiPost("/clockin/whitelist", data),
