@@ -182,19 +182,24 @@ const SelfClock = () => {
           )}
         </div>
 
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3 justify-center">
           <Button onClick={() => submit("clock_in")} disabled={busy || isClockedIn || blockedByGeo || geo.status !== "ok"}>
             <LogIn className="h-4 w-4 mr-2" /> Clock In
           </Button>
           <Button variant="outline" onClick={() => submit("clock_out")} disabled={busy || !isClockedIn || geo.status !== "ok"}>
             <LogOut className="h-4 w-4 mr-2" /> Clock Out
           </Button>
+          <Button variant="secondary" onClick={() => setReportOpen(true)}>
+            <ClipboardList className="h-4 w-4 mr-2" /> Shift Report
+          </Button>
         </div>
         <p className="text-xs text-muted-foreground mt-4 max-w-md">
           Your device GPS is checked against the allowed area. Clock-in is only permitted within the configured radius and during allowed hours (04:00–24:00 EAT).
+          When you clock out, a shift report opens automatically — rentals, returns and hours are pre-filled.
         </p>
 
       </div>
+
 
       <div className="bg-card border border-border rounded-lg overflow-hidden">
         <div className="px-4 py-3 border-b border-border font-medium">Your recent activity</div>
@@ -233,6 +238,12 @@ const SelfClock = () => {
           </table>
         )}
       </div>
+
+      <ShiftReportDialog
+        open={reportOpen}
+        onOpenChange={setReportOpen}
+        agentName={user?.name || user?.email || "Agent"}
+      />
     </div>
   );
 };
