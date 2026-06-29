@@ -5,8 +5,14 @@ import {
   useEffect,
   ReactNode,
 } from "react";
+import { toast } from "sonner";
 import { User, UserRole } from "@/types/dashboard";
 import { api, tokenStore } from "@/services/api";
+import {
+  clearSessionMarkers,
+  markSessionStart,
+  useIdleLogout,
+} from "@/hooks/useIdleLogout";
 
 interface AuthContextType {
   user: User | null;
