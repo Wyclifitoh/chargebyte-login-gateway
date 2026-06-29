@@ -9,14 +9,14 @@ import { useEffect, useRef } from "react";
 const ACTIVITY_KEY = "cb_last_activity";
 const SESSION_START_KEY = "cb_session_started_at";
 
-const ACTIVITY_EVENTS: (keyof WindowEventMap)[] = [
+const ACTIVITY_EVENTS = [
   "mousemove",
   "mousedown",
   "keydown",
   "touchstart",
   "scroll",
   "visibilitychange",
-];
+] as const;
 
 export function markSessionStart() {
   const now = Date.now();

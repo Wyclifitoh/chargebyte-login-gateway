@@ -84,6 +84,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           phone: userData.phone, partner_id: userData.partner_id, partner_type: userData.partner_type,
         };
         tokenStore.setUser(u);
+        markSessionStart();
         setUser(u);
         return { success: true };
       }
@@ -93,11 +94,32 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const logout = async () => {
+  const doLogout = async (reason?: "idle" | "expired" | "manual") => {
     try { await api.auth.logout(); } catch { /* ignore */ }
     tokenStore.clearTokens();
+    clearSessionMarkers();
     setUser(null);
+    if (reason === "idle") {
+      toast.warning("Signed out due to inactivity", {
+        description: "Please sign in again to continue.",
+      });
+    } else if (reason === "expired") {
+      toast.warning("Session expired", {
+        description: "Your session has reached its maximum duration. Please sign in again.",
+      });
+    }
   };
+
+  const logout = () => doLogout("manual");
+
+  // Enterprise idle + absolute-session enforcement
+  useIdleLogout({
+    enabled: !!user,
+    idleMs: 15 * 60 * 1000,
+    absoluteMs: 12 * 60 * 60 * 1000,
+    onIdle: () => doLogout("idle"),
+    onAbsoluteExpiry: () => doLogout("expired"),
+  });
 
   if (isLoading) return null;
 
