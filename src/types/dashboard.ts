@@ -42,9 +42,9 @@ export const ROLE_DASHBOARD_PATHS: Record<UserRole, string> = {
 // Super Admin: everything. Admin: ops-focused (no revenue/mpesa/partners/adclients/transactions/campaigns/audit).
 // Staff: clock-in, daily report, alerts.
 export const ROLE_NAV_ACCESS: Record<UserRole, string[]> = {
-  super_admin: ["overview", "rentals", "machines", "stations", "revenue", "users", "partners", "adclients", "forms", "campaigns", "transactions", "mpesa", "audit", "operations", "notifications", "clockin", "reports"],
-  admin: ["overview", "rentals", "machines", "stations", "users", "forms", "operations", "notifications", "clockin", "reports"],
-  staff: ["overview", "clockin", "reports", "notifications"],
+  super_admin: ["overview", "rentals", "machines", "stations", "revenue", "users", "partners", "adclients", "forms", "campaigns", "transactions", "mpesa", "audit", "operations", "notifications", "clockin", "reports", "support"],
+  admin: ["overview", "rentals", "machines", "stations", "users", "forms", "operations", "notifications", "clockin", "reports", "support"],
+  staff: ["overview", "clockin", "reports", "notifications", "support"],
   location_partner: ["overview", "partner", "revenue", "notifications"],
   funding_partner: ["overview", "partner", "revenue", "notifications"],
   ad_client: ["overview", "campaigns", "notifications"],
@@ -294,4 +294,48 @@ export interface Activity {
   date: string;
   status: "planned" | "in_progress" | "completed" | "cancelled";
   description: string;
+}
+
+export type SupportStatus = "open" | "assigned" | "in_progress" | "resolved" | "closed" | "escalated";
+export type SupportPriority = "low" | "medium" | "high" | "critical";
+export type SupportCategory = "rental" | "refund" | "machine" | "payment" | "account" | "other";
+
+export interface SupportTicketComment {
+  id: string;
+  ticket_id: string;
+  author_id: string;
+  author_name?: string | null;
+  body: string;
+  is_internal: number | boolean;
+  created_at: string;
+}
+
+export interface SupportTicket {
+  id: string;
+  ticket_no: string;
+  subject: string;
+  description?: string | null;
+  category: SupportCategory;
+  priority: SupportPriority;
+  status: SupportStatus;
+  customer_name?: string | null;
+  customer_phone?: string | null;
+  customer_email?: string | null;
+  rental_id?: string | null;
+  machine_id?: string | null;
+  station_id?: string | null;
+  station_name?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  photos_json?: string[] | null;
+  sla_due_at?: string | null;
+  assigned_to?: string | null;
+  assigned_to_name?: string | null;
+  created_by: string;
+  created_by_name?: string | null;
+  resolved_at?: string | null;
+  resolution_note?: string | null;
+  created_at: string;
+  updated_at: string;
+  comments?: SupportTicketComment[];
 }

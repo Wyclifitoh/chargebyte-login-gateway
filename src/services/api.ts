@@ -327,6 +327,19 @@ export const api = {
       remove: (id: string) => apiDelete(`/clockin/reports/${id}`),
     },
   },
+
+  support: {
+    list: (params?: Record<string, string | number | undefined>) =>
+      apiGet(`/support${buildQS(params)}`),
+    summary: () => apiGet("/support/summary"),
+    getById: (id: string) => apiGet(`/support/${id}`),
+    create: (data: unknown) => apiPost("/support", data),
+    update: (id: string, data: unknown) => apiPut(`/support/${id}`, data),
+    assign: (id: string, assigned_to: string) => apiPut(`/support/${id}/assign`, { assigned_to }),
+    addComment: (id: string, data: { body: string; is_internal?: boolean }) =>
+      apiPost(`/support/${id}/comments`, data),
+    remove: (id: string) => apiDelete(`/support/${id}`),
+  },
 };
 
 export default api;
