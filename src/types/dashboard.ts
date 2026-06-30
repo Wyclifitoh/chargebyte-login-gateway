@@ -295,3 +295,47 @@ export interface Activity {
   status: "planned" | "in_progress" | "completed" | "cancelled";
   description: string;
 }
+
+export type SupportStatus = "open" | "assigned" | "in_progress" | "resolved" | "closed" | "escalated";
+export type SupportPriority = "low" | "medium" | "high" | "critical";
+export type SupportCategory = "rental" | "refund" | "machine" | "payment" | "account" | "other";
+
+export interface SupportTicketComment {
+  id: string;
+  ticket_id: string;
+  author_id: string;
+  author_name?: string | null;
+  body: string;
+  is_internal: number | boolean;
+  created_at: string;
+}
+
+export interface SupportTicket {
+  id: string;
+  ticket_no: string;
+  subject: string;
+  description?: string | null;
+  category: SupportCategory;
+  priority: SupportPriority;
+  status: SupportStatus;
+  customer_name?: string | null;
+  customer_phone?: string | null;
+  customer_email?: string | null;
+  rental_id?: string | null;
+  machine_id?: string | null;
+  station_id?: string | null;
+  station_name?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  photos_json?: string[] | null;
+  sla_due_at?: string | null;
+  assigned_to?: string | null;
+  assigned_to_name?: string | null;
+  created_by: string;
+  created_by_name?: string | null;
+  resolved_at?: string | null;
+  resolution_note?: string | null;
+  created_at: string;
+  updated_at: string;
+  comments?: SupportTicketComment[];
+}
