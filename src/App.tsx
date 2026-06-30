@@ -26,6 +26,7 @@ import PartnersPage from "@/pages/dashboard/PartnersPage";
 import AdClientsPage from "@/pages/dashboard/AdClientsPage";
 import ClockInPage from "@/pages/dashboard/ClockInPage";
 import ReportsPage from "@/pages/dashboard/ReportsPage";
+import SupportPage from "@/pages/dashboard/SupportPage";
 
 const queryClient = new QueryClient();
 
