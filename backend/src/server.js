@@ -26,6 +26,7 @@ const mpesaPublicRoutes = require('./routes/mpesa-public.routes');
 const adClientRoutes = require('./routes/adclient.routes');
 const teamRoutes = require('./routes/team.routes');
 const clockinRoutes = require('./routes/clockin.routes');
+const supportRoutes = require('./routes/support.routes');
 const { errorHandler, notFound } = require('./middleware/error.middleware');
 
 const app = express();
