@@ -2,7 +2,7 @@ import { ReactNode } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { ROLE_NAV_ACCESS, ROLE_LABELS } from "@/types/dashboard";
 import { useNavigate, useLocation } from "react-router-dom";
-import { LogOut, ChevronDown, Zap, LayoutDashboard, Car, Cpu, MapPin, DollarSign, Users, Megaphone, ClipboardList, Menu, X, CreditCard, Shield, Briefcase, Bell, KeyRound, Smartphone, Clock, FileText } from "lucide-react";
+import { LogOut, ChevronDown, Zap, LayoutDashboard, Car, Cpu, MapPin, DollarSign, Users, Megaphone, ClipboardList, Menu, X, CreditCard, Shield, Briefcase, Bell, KeyRound, Smartphone, Clock, FileText, LifeBuoy } from "lucide-react";
 import { useState } from "react";
 import logo from "@/assets/chargebyte-logo.png";
 import { mockNotifications } from "@/data/extendedMockData";
