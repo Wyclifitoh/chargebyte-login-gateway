@@ -27,6 +27,7 @@ const NAV_ITEMS = [
   { id: "notifications", label: "Alerts", icon: Bell, path: "/dashboard/notifications" },
   { id: "clockin", label: "Clock In/Out", icon: Clock, path: "/dashboard/clockin" },
   { id: "reports", label: "Reports", icon: FileText, path: "/dashboard/reports" },
+  { id: "support", label: "Support", icon: LifeBuoy, path: "/dashboard/support" },
 ];
 
 const DashboardLayout = ({ children }: { children: ReactNode }) => {
