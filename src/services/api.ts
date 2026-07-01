@@ -340,6 +340,13 @@ export const api = {
       apiPost(`/support/${id}/comments`, data),
     remove: (id: string) => apiDelete(`/support/${id}`),
   },
+
+  performance: {
+    leaderboard: (params?: Record<string, string | number | undefined>) =>
+      apiGet(`/performance/leaderboard${buildQS(params)}`),
+    agent: (id: string, params?: Record<string, string | number | undefined>) =>
+      apiGet(`/performance/agent/${id}${buildQS(params)}`),
+  },
 };
 
 export default api;
