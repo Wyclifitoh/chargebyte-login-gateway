@@ -2,7 +2,7 @@ import { ReactNode } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { ROLE_NAV_ACCESS, ROLE_LABELS } from "@/types/dashboard";
 import { useNavigate, useLocation } from "react-router-dom";
-import { LogOut, ChevronDown, Zap, LayoutDashboard, Car, Cpu, MapPin, DollarSign, Users, Megaphone, ClipboardList, Menu, X, CreditCard, Shield, Briefcase, Bell, KeyRound, Smartphone, Clock, FileText, LifeBuoy } from "lucide-react";
+import { LogOut, ChevronDown, Zap, LayoutDashboard, Car, Cpu, MapPin, DollarSign, Users, Megaphone, ClipboardList, Menu, X, CreditCard, Shield, Briefcase, Bell, KeyRound, Smartphone, Clock, FileText, LifeBuoy, Trophy } from "lucide-react";
 import { useState } from "react";
 import logo from "@/assets/chargebyte-logo.png";
 import { mockNotifications } from "@/data/extendedMockData";
@@ -28,6 +28,7 @@ const NAV_ITEMS = [
   { id: "clockin", label: "Clock In/Out", icon: Clock, path: "/dashboard/clockin" },
   { id: "reports", label: "Reports", icon: FileText, path: "/dashboard/reports" },
   { id: "support", label: "Support", icon: LifeBuoy, path: "/dashboard/support" },
+  { id: "performance", label: "Performance", icon: Trophy, path: "/dashboard/performance" },
 ];
 
 const DashboardLayout = ({ children }: { children: ReactNode }) => {

@@ -42,8 +42,8 @@ export const ROLE_DASHBOARD_PATHS: Record<UserRole, string> = {
 // Super Admin: everything. Admin: ops-focused (no revenue/mpesa/partners/adclients/transactions/campaigns/audit).
 // Staff: clock-in, daily report, alerts.
 export const ROLE_NAV_ACCESS: Record<UserRole, string[]> = {
-  super_admin: ["overview", "rentals", "machines", "stations", "revenue", "users", "partners", "adclients", "forms", "campaigns", "transactions", "mpesa", "audit", "operations", "notifications", "clockin", "reports", "support"],
-  admin: ["overview", "rentals", "machines", "stations", "users", "forms", "operations", "notifications", "clockin", "reports", "support"],
+  super_admin: ["overview", "rentals", "machines", "stations", "revenue", "users", "partners", "adclients", "forms", "campaigns", "transactions", "mpesa", "audit", "operations", "notifications", "clockin", "reports", "support", "performance"],
+  admin: ["overview", "rentals", "machines", "stations", "users", "forms", "operations", "notifications", "clockin", "reports", "support", "performance"],
   staff: ["overview", "clockin", "reports", "notifications", "support"],
   location_partner: ["overview", "partner", "revenue", "notifications"],
   funding_partner: ["overview", "partner", "revenue", "notifications"],
