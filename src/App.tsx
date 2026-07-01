@@ -27,6 +27,7 @@ import AdClientsPage from "@/pages/dashboard/AdClientsPage";
 import ClockInPage from "@/pages/dashboard/ClockInPage";
 import ReportsPage from "@/pages/dashboard/ReportsPage";
 import SupportPage from "@/pages/dashboard/SupportPage";
+import PerformancePage from "@/pages/dashboard/PerformancePage";
 
 const queryClient = new QueryClient();
 
@@ -64,6 +65,7 @@ const App = () => (
             <Route path="/dashboard/clockin" element={<DashboardRoute section="clockin"><ClockInPage /></DashboardRoute>} />
             <Route path="/dashboard/reports" element={<DashboardRoute section="reports"><ReportsPage /></DashboardRoute>} />
             <Route path="/dashboard/support" element={<DashboardRoute section="support"><SupportPage /></DashboardRoute>} />
+            <Route path="/dashboard/performance" element={<DashboardRoute section="performance"><PerformancePage /></DashboardRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
