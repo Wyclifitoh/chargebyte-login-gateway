@@ -124,6 +124,12 @@ async function apiDelete<T>(url: string): Promise<ApiResponse<T>> {
   try { return await res.json(); }
   catch { return { success: false, data: null as unknown as T, error: `HTTP ${res.status}` }; }
 }
+async function apiPatch<T>(url: string, body: unknown): Promise<ApiResponse<T>> {
+  const res = await authFetch(url, { method: "PATCH", body: JSON.stringify(body) });
+  try { return await res.json(); }
+  catch { return { success: false, data: null as unknown as T, error: `HTTP ${res.status}` }; }
+}
+
 
 // ---------------- Endpoints ----------------
 export const api = {
@@ -281,9 +287,14 @@ export const api = {
   notifications: {
     getAll: (params?: Record<string, string | number | undefined>) =>
       apiGet(`/notifications${buildQS(params)}`),
+    unreadCount: () => apiGet<{ count: number }>("/notifications/unread-count"),
+    markRead: (id: string) => apiPatch(`/notifications/${id}/read`, {}),
+    dismiss: (id: string) => apiPatch(`/notifications/${id}/dismiss`, {}),
+    markAllRead: () => apiPost("/notifications/mark-all-read", {}),
     resolve: (id: string) => apiPut(`/notifications/${id}/resolve`, {}),
     create: (data: unknown) => apiPost("/notifications", data),
   },
+
 
   operations: {
     getLeads: (params?: Record<string, string | number | undefined>) =>
