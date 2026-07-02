@@ -14,7 +14,7 @@ function esc(v: unknown): string {
   return s;
 }
 
-export function downloadCsv<T extends Record<string, unknown>>(
+export function downloadCsv<T>(
   filename: string,
   rows: T[],
   columns: CsvColumn<T>[],
@@ -23,7 +23,9 @@ export function downloadCsv<T extends Record<string, unknown>>(
   const body = rows
     .map((r) =>
       columns
-        .map((c) => esc(c.format ? c.format(r) : (r as Record<string, unknown>)[c.key as string]))
+        .map((c) =>
+          esc(c.format ? c.format(r) : (r as unknown as Record<string, unknown>)[c.key as string]),
+        )
         .join(","),
     )
     .join("\n");
@@ -38,3 +40,4 @@ export function downloadCsv<T extends Record<string, unknown>>(
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }
+
