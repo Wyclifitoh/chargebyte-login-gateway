@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { FileText, Save, Trash2, Plus } from "lucide-react";
+import { FileText, Save, Trash2, Plus, Download } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader, TableSkeleton, EmptyState, ConfirmDialog } from "@/components/shared";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { api } from "@/services/api";
 import { useAuth } from "@/contexts/AuthContext";
+import { downloadCsv } from "@/lib/csv";
 import type { DailyReport, Station } from "@/types/dashboard";
+
 
 function fmtDate(iso?: string | null) {
   if (!iso) return "—";
@@ -101,15 +103,39 @@ const ReportsPage = () => {
     pending: acc.pending + Number(r.pending_returns || 0),
   }), { rentals: 0, returns: 0, pending: 0 }), [reports]);
 
+  const exportCsv = () => {
+    if (!reports.length) { toast.error("Nothing to export"); return; }
+    downloadCsv(`daily-reports-${today()}`, reports, [
+      { key: "report_date", label: "Date", format: (r) => fmtDate(r.report_date) },
+      { key: "agent_name", label: "Agent" },
+      { key: "location", label: "Location" },
+      { key: "rentals", label: "Rentals" },
+      { key: "returns", label: "Returns" },
+      { key: "pending_returns", label: "Pending" },
+      { key: "powerbanks_arrival", label: "PB Arrival" },
+      { key: "powerbanks_departure", label: "PB Departure" },
+      { key: "time_in", label: "Time In", format: (r) => fmtTime(r.time_in) },
+      { key: "time_out", label: "Time Out", format: (r) => fmtTime(r.time_out) },
+      { key: "notes", label: "Notes" },
+    ]);
+    toast.success(`Exported ${reports.length} reports`);
+  };
+
   return (
     <div className="space-y-6">
       <PageHeader
         title="Daily Reports"
         description={isAdmin ? "Agent shift reports across all stations" : "Your daily shift reports"}
         actions={
-          <Button onClick={open}><Plus className="h-4 w-4 mr-2" />New Report</Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={exportCsv} disabled={!reports.length}>
+              <Download className="h-4 w-4 mr-2" />Export CSV
+            </Button>
+            <Button onClick={open}><Plus className="h-4 w-4 mr-2" />New Report</Button>
+          </div>
         }
       />
+
 
       {/* Filters */}
       <div className="flex flex-wrap items-end gap-3 bg-card border border-border rounded-lg p-4">
