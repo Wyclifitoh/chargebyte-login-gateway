@@ -241,7 +241,7 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
       {/* Grouped Nav (desktop) */}
       <nav className="bg-card border-b border-border">
         <div className="max-w-[1400px] mx-auto px-4 sm:px-6">
-          <div className="hidden sm:flex items-center gap-1 overflow-x-auto">
+          <div className="hidden sm:flex items-center gap-1 flex-wrap">
             {showOverview && (
               <button
                 onClick={() => navigate(OVERVIEW.path)}
