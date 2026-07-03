@@ -349,7 +349,7 @@ function ShiftsTab({ isAdmin, isSuperAdmin }: { isAdmin: boolean; isSuperAdmin: 
 }
 
 // ---------- Generic date-range report tab (Revenue / Agents / Stations / Support) ----------
-type DatasetRow = Record<string, unknown>;
+type DatasetRow = object;
 interface KpiTile { label: string; value: string }
 
 function ReportTab<T extends DatasetRow>({
@@ -459,7 +459,7 @@ async function fetchStationBreakdown(from: string, to: string): Promise<StationR
   const params: Record<string, string> = {};
   if (from) params.from = from;
   if (to) params.to = to;
-  const res = await api.revenue.byStation(params);
+  const res = await api.revenue.getByStation(params);
   return res.success ? ((res.data as StationRow[]) || []) : [];
 }
 
