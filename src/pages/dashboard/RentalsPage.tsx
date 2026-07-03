@@ -59,7 +59,7 @@ import type { Rental } from "@/types/dashboard";
 
 interface RentalRow extends Rental {
   station_name?: string;
-  machine_name?: string;
+  machine_model?: string; // We'll use this instead of machine_name
 }
 
 const PAGE_SIZE = 25;
@@ -77,9 +77,21 @@ const formatDuration = (mins: number) => {
   return `${m} min`;
 };
 
+// Generate a short numeric ID from rental code
+const getShortId = (rentalCode: string) => {
+  // Extract numbers from the rental code or use hash
+  const numbers = rentalCode.replace(/\D/g, "");
+  if (numbers.length >= 4) {
+    return numbers.slice(0, 6); // First 6 digits
+  }
+  // Fallback: use last 6 characters of the code
+  return rentalCode.slice(-6);
+};
+
 const RentalsPage = () => {
   const [search, setSearch] = useState("");
   const [stationFilter, setStationFilter] = useState("all");
+  const [machineFilter, setMachineFilter] = useState("all"); // New machine filter
   const [statusFilter, setStatusFilter] = useState("all");
   const [period, setPeriod] = useState<DatePeriod>("all");
   const [dateFrom, setDateFrom] = useState<string | undefined>();
@@ -103,17 +115,17 @@ const RentalsPage = () => {
   const [refundPin, setRefundPin] = useState("");
   const [refundSending, setRefundSending] = useState(false);
 
-
   const { data: stations } = useStations();
   const { data: machines } = useMachines();
 
-  // Filters shared between page list & summary (summary covers full period, no pagination)
+  // Filters shared between page list & summary
   const filterParams = {
     period,
     date_from: period === "custom" ? dateFrom : undefined,
     date_to: period === "custom" ? dateTo : undefined,
     status: statusFilter === "all" ? undefined : statusFilter,
     station_id: stationFilter === "all" ? undefined : stationFilter,
+    machine_model: machineFilter === "all" ? undefined : machineFilter, // Add machine filter
     search: search || undefined,
   };
 
@@ -135,10 +147,16 @@ const RentalsPage = () => {
     (rentals as RentalRow[]).find((r) => r.station_id === id)?.station_name ??
     stations.find((s) => s.id === id)?.name ??
     id;
-  const machineName = (id: string) =>
-    (rentals as RentalRow[]).find((r) => r.machine_id === id)?.machine_name ??
-    machines.find((m) => m.id === id)?.name ??
-    id;
+
+  // Get machine model from rentals data
+  const getMachineModel = (rental: RentalRow) => {
+    return rental.machine_model || rental.model || "N/A";
+  };
+
+  // Get unique machine models for filter
+  const uniqueModels = Array.from(
+    new Set((rentals as RentalRow[]).map((r) => r.machine_model || r.model).filter(Boolean)),
+  ).sort();
 
   // Local sort over the current page
   const sorted = (() => {
@@ -165,12 +183,12 @@ const RentalsPage = () => {
   const total = meta?.total ?? rentals.length;
   const totalPages = meta?.pages ?? 1;
 
+  // Updated columns - removed rental_code, using machine_model
   const columns: Array<{ key: keyof RentalRow; label: string }> = [
-    { key: "rental_code", label: "Rental Code" },
+    { key: "id", label: "Rental ID" },
     { key: "phone_number", label: "Phone" },
     { key: "station_id", label: "Station" },
-    // { key: "machine_id", label: "Machine" },
-    // { key: "powerbank_id", label: "Powerbank" },
+    { key: "machine_model", label: "Machine" },
     { key: "start_time", label: "Start" },
     { key: "end_time", label: "End" },
     { key: "duration_minutes", label: "Duration" },
@@ -189,18 +207,17 @@ const RentalsPage = () => {
     e.stopPropagation();
     setSmsTarget(r);
     setSmsPhone(r.phone_number || "");
-    setSmsMessage(`Hi, regarding your rental ${r.rental_code}: `);
+    const shortId = getShortId(r.rental_code || r.id);
+    setSmsMessage(`Hi, regarding your rental #${shortId}: `);
   };
 
   const openRefund = (r: RentalRow, e: React.MouseEvent) => {
     e.stopPropagation();
-    const owed = Math.max(
-      Number(r.deposit_amount || 0) - Number(r.deposit_refunded || 0),
-      0,
-    );
+    const owed = Math.max(Number(r.deposit_amount || 0) - Number(r.deposit_refunded || 0), 0);
     setRefundTarget(r);
     setRefundAmount(String(owed || r.deposit_amount || 0));
-    setRefundRemarks(`Refund for rental ${r.rental_code}`);
+    const shortId = getShortId(r.rental_code || r.id);
+    setRefundRemarks(`Refund for rental #${shortId}`);
     setRefundPin("");
   };
 
@@ -237,7 +254,6 @@ const RentalsPage = () => {
       setRefundSending(false);
     }
   };
-
 
   const exportExcel = async () => {
     setExporting(true);
@@ -326,7 +342,7 @@ const RentalsPage = () => {
 
       {isFallback && <FallbackBanner onRetry={refetch} />}
 
-      {/* Period-wide revenue / volume cards (not page-bound) */}
+      {/* Period-wide revenue / volume cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard
           title="Total Revenue (Amount)"
@@ -350,7 +366,7 @@ const RentalsPage = () => {
         />
       </div>
 
-      {/* Status breakdown for the period */}
+      {/* Status breakdown */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <MetricCard
           title="Active"
@@ -377,7 +393,7 @@ const RentalsPage = () => {
       <FilterBar
         searchValue={search}
         onSearchChange={(v) => onFilterChange(() => setSearch(v))}
-        searchPlaceholder="Search by rental code, phone, or powerbank..."
+        searchPlaceholder="Search by phone, or machine model..."
       >
         <Select
           value={stationFilter}
@@ -395,6 +411,25 @@ const RentalsPage = () => {
             ))}
           </SelectContent>
         </Select>
+
+        {/* New Machine Model Filter */}
+        <Select
+          value={machineFilter}
+          onValueChange={(v) => onFilterChange(() => setMachineFilter(v))}
+        >
+          <SelectTrigger className="w-[180px] h-9">
+            <SelectValue placeholder="Machine Model" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Machines</SelectItem>
+            {uniqueModels.map((model) => (
+              <SelectItem key={model} value={model}>
+                {model}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
         <Select
           value={statusFilter}
           onValueChange={(v) => onFilterChange(() => setStatusFilter(v))}
@@ -413,7 +448,7 @@ const RentalsPage = () => {
       </FilterBar>
 
       {isLoading ? (
-        <TableSkeleton rows={8} columns={13} />
+        <TableSkeleton rows={8} columns={12} />
       ) : error && !isFallback ? (
         <ErrorState title="Couldn't load rentals" message={error} onRetry={refetch} />
       ) : (
@@ -442,78 +477,77 @@ const RentalsPage = () => {
                 </tr>
               </thead>
               <tbody>
-                {sorted.map((r) => (
-                  <tr
-                    key={r.id}
-                    onClick={() => setSelected(r)}
-                    className="border-b border-border last:border-0 hover:bg-muted/50 transition-colors cursor-pointer"
-                  >
-                    <td className="px-3 py-3 text-foreground font-mono text-xs">{r.rental_code}</td>
-                    <td className="px-3 py-3 text-foreground">{r.phone_number}</td>
-                    <td className="px-3 py-3 text-foreground">
-                      {r.station_name ?? stationName(r.station_id)}
-                    </td>
-                    {/* <td className="px-3 py-3 text-foreground">
-                      {r.machine_name ?? machineName(r.machine_id)}
-                    </td>
-                    <td className="px-3 py-3 text-foreground font-mono text-xs">
-                      {r.powerbank_id}
-                    </td> */}
-                    <td className="px-3 py-3 text-foreground whitespace-nowrap">
-                      {formatDateTime(r.start_time)}
-                    </td>
-                    <td className="px-3 py-3 text-foreground whitespace-nowrap">
-                      {r.end_time ? formatDateTime(r.end_time) : "—"}
-                    </td>
-                    <td className="px-3 py-3 text-foreground">
-                      {Number(r.duration_minutes) > 0 ? `${r.duration_minutes} min` : "—"}
-                    </td>
-                    <td className="px-3 py-3 text-foreground font-medium">
-                      {Number(r.total_amount) > 0 ? formatKsh(r.total_amount) : "—"}
-                    </td>
-                    <td className="px-3 py-3 text-foreground">{formatKsh(r.deposit_amount)}</td>
-                    <td className="px-3 py-3">
-                      {Number(r.deposit_refunded) > 0 ? (
-                        <span className="text-green-600 font-medium">
-                          {formatKsh(Number(r.deposit_refunded))}
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground">—</span>
-                      )}
-                    </td>
-                    <td className="px-3 py-3">
-                      <StatusBadge status={r.status} />
-                    </td>
-                    <td className="px-3 py-3 text-right">
-                      <div className="flex justify-end gap-1.5">
-                        {(r.status === "pending" || r.status === "pending_payment") && (
+                {sorted.map((r) => {
+                  const shortId = getShortId(r.rental_code || r.id);
+                  const machineModel = r.machine_model || r.model || "N/A";
+
+                  return (
+                    <tr
+                      key={r.id}
+                      onClick={() => setSelected(r)}
+                      className="border-b border-border last:border-0 hover:bg-muted/50 transition-colors cursor-pointer"
+                    >
+                      <td className="px-3 py-3 text-foreground font-mono text-xs">#{shortId}</td>
+                      <td className="px-3 py-3 text-foreground">{r.phone_number}</td>
+                      <td className="px-3 py-3 text-foreground">
+                        {r.station_name ?? stationName(r.station_id)}
+                      </td>
+                      <td className="px-3 py-3 text-foreground font-mono">{machineModel}</td>
+                      <td className="px-3 py-3 text-foreground whitespace-nowrap">
+                        {formatDateTime(r.start_time)}
+                      </td>
+                      <td className="px-3 py-3 text-foreground whitespace-nowrap">
+                        {r.end_time ? formatDateTime(r.end_time) : "—"}
+                      </td>
+                      <td className="px-3 py-3 text-foreground">
+                        {Number(r.duration_minutes) > 0 ? `${r.duration_minutes} min` : "—"}
+                      </td>
+                      <td className="px-3 py-3 text-foreground font-medium">
+                        {Number(r.total_amount) > 0 ? formatKsh(r.total_amount) : "—"}
+                      </td>
+                      <td className="px-3 py-3 text-foreground">{formatKsh(r.deposit_amount)}</td>
+                      <td className="px-3 py-3">
+                        {Number(r.deposit_refunded) > 0 ? (
+                          <span className="text-green-600 font-medium">
+                            {formatKsh(Number(r.deposit_refunded))}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-3">
+                        <StatusBadge status={r.status} />
+                      </td>
+                      <td className="px-3 py-3 text-right">
+                        <div className="flex justify-end gap-1.5">
+                          {(r.status === "pending" || r.status === "pending_payment") && (
+                            <Button
+                              size="sm"
+                              variant="default"
+                              onClick={(e) => openRefund(r, e)}
+                              className="h-8"
+                            >
+                              <Wallet className="h-3.5 w-3.5 mr-1.5" />
+                              Refund
+                            </Button>
+                          )}
                           <Button
                             size="sm"
-                            variant="default"
-                            onClick={(e) => openRefund(r, e)}
+                            variant="outline"
+                            onClick={(e) => openSms(r, e)}
                             className="h-8"
                           >
-                            <Wallet className="h-3.5 w-3.5 mr-1.5" />
-                            Refund
+                            <MessageSquare className="h-3.5 w-3.5 mr-1.5" />
+                            SMS
                           </Button>
-                        )}
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={(e) => openSms(r, e)}
-                          className="h-8"
-                        >
-                          <MessageSquare className="h-3.5 w-3.5 mr-1.5" />
-                          SMS
-                        </Button>
-                      </div>
-                    </td>
-
-                  </tr>
-                ))}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
                 {sorted.length === 0 && (
                   <tr>
-                    <td colSpan={13}>
+                    <td colSpan={12}>
                       <EmptyState
                         title="No rentals found"
                         description="Try adjusting your filters or date range."
@@ -543,17 +577,19 @@ const RentalsPage = () => {
           </SheetHeader>
           {selected && (
             <div className="mt-6 space-y-1">
-              <DetailRow label="Rental Code" value={selected.rental_code} />
+              <DetailRow
+                label="Rental ID"
+                value={`#${getShortId(selected.rental_code || selected.id)}`}
+              />
               <DetailRow label="Phone Number" value={selected.phone_number} />
               <DetailRow
                 label="Station"
                 value={selected.station_name ?? stationName(selected.station_id)}
               />
               <DetailRow
-                label="Machine"
-                value={selected.machine_name ?? machineName(selected.machine_id)}
+                label="Machine Model"
+                value={selected.machine_model || selected.model || "N/A"}
               />
-              <DetailRow label="Powerbank" value={selected.powerbank_id} />
               <DetailRow label="Start Time" value={formatDateTime(selected.start_time)} />
               <DetailRow
                 label="End Time"
@@ -596,7 +632,10 @@ const RentalsPage = () => {
             <DialogDescription>
               {smsTarget && (
                 <>
-                  Rental <span className="font-mono">{smsTarget.rental_code}</span>
+                  Rental{" "}
+                  <span className="font-mono">
+                    #{getShortId(smsTarget.rental_code || smsTarget.id)}
+                  </span>
                 </>
               )}
             </DialogDescription>
@@ -642,7 +681,6 @@ const RentalsPage = () => {
       </Dialog>
 
       {/* Manual B2C Refund Dialog */}
-
       <Dialog open={!!refundTarget} onOpenChange={(open) => !open && setRefundTarget(null)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -651,8 +689,10 @@ const RentalsPage = () => {
               {refundTarget && (
                 <>
                   Refund the customer for rental{" "}
-                  <span className="font-mono">{refundTarget.rental_code}</span>. Funds will
-                  be sent via Safaricom B2C to the rental phone number.
+                  <span className="font-mono">
+                    #{getShortId(refundTarget.rental_code || refundTarget.id)}
+                  </span>
+                  . Funds will be sent via Safaricom B2C to the rental phone number.
                 </>
               )}
             </DialogDescription>
@@ -675,15 +715,10 @@ const RentalsPage = () => {
             </div>
             <div>
               <label className="text-sm font-medium mb-1.5 block">Remarks</label>
-              <Input
-                value={refundRemarks}
-                onChange={(e) => setRefundRemarks(e.target.value)}
-              />
+              <Input value={refundRemarks} onChange={(e) => setRefundRemarks(e.target.value)} />
             </div>
             <div>
-              <label className="text-sm font-medium mb-1.5 block">
-                Transaction PIN (4 digits)
-              </label>
+              <label className="text-sm font-medium mb-1.5 block">Transaction PIN (4 digits)</label>
               <Input
                 type="password"
                 inputMode="numeric"
@@ -717,4 +752,3 @@ const RentalsPage = () => {
 };
 
 export default RentalsPage;
-
