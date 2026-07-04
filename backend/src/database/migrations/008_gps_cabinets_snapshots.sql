@@ -36,22 +36,16 @@ ALTER TABLE machines
 CREATE UNIQUE INDEX IF NOT EXISTS ux_machines_cabinet_device_id
   ON machines (cabinet_device_id);
 
--- 4) Powerbanks (batteries) tracked per cabinet
-CREATE TABLE IF NOT EXISTS powerbanks (
-  id            VARCHAR(36) PRIMARY KEY,
-  battery_id    VARCHAR(64) NOT NULL,
-  machine_id    VARCHAR(36) NULL,
-  voltage       DECIMAL(5,2) NULL,
-  soc_percent   INT NULL COMMENT 'State of charge 0-100',
-  status        ENUM('in_cabinet','rented','abnormal','unknown') NOT NULL DEFAULT 'unknown',
-  last_seen_at  DATETIME NULL,
-  created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  UNIQUE KEY ux_powerbanks_battery_id (battery_id),
-  KEY ix_powerbanks_machine (machine_id),
-  KEY ix_powerbanks_status  (status),
-  CONSTRAINT fk_powerbanks_machine FOREIGN KEY (machine_id) REFERENCES machines(id) ON DELETE SET NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+-- 4) Powerbanks: extend existing table with manufacturer battery id + last seen
+ALTER TABLE powerbanks
+  ADD COLUMN IF NOT EXISTS battery_id   VARCHAR(64) NULL COMMENT 'Manufacturer-issued battery serial',
+  ADD COLUMN IF NOT EXISTS voltage      DECIMAL(5,2) NULL,
+  ADD COLUMN IF NOT EXISTS soc_percent  INT NULL COMMENT 'State of charge 0-100',
+  ADD COLUMN IF NOT EXISTS last_seen_at DATETIME NULL;
+
+CREATE UNIQUE INDEX IF NOT EXISTS ux_powerbanks_battery_id ON powerbanks (battery_id);
+CREATE INDEX IF NOT EXISTS ix_powerbanks_last_seen ON powerbanks (last_seen_at);
+
 
 -- 5) clock_events: add distance_m (station_id/accuracy already exist)
 ALTER TABLE clock_events
