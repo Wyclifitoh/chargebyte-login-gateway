@@ -358,6 +358,11 @@ export const api = {
     agent: (id: string, params?: Record<string, string | number | undefined>) =>
       apiGet(`/performance/agent/${id}${buildQS(params)}`),
   },
+
+  settings: {
+    getAll: () => apiGet<Record<string, string>>("/settings"),
+    update: (values: Record<string, string | number>) => apiPut("/settings", values),
+  },
 };
 
 export default api;
