@@ -28,6 +28,7 @@ const teamRoutes = require("./routes/team.routes");
 const clockinRoutes = require("./routes/clockin.routes");
 const supportRoutes = require("./routes/support.routes");
 const performanceRoutes = require("./routes/performance.routes");
+const settingsRoutes = require("./routes/settings.routes");
 const { errorHandler, notFound } = require("./middleware/error.middleware");
 
 const app = express();
@@ -96,6 +97,7 @@ app.use("/api/team", teamRoutes);
 app.use("/api/clockin", clockinRoutes);
 app.use("/api/support", supportRoutes);
 app.use("/api/performance", performanceRoutes);
+app.use("/api/settings", settingsRoutes);
 // Public M-Pesa callbacks (Safaricom hits these — no auth)
 app.use("/api/public/mpesa", mpesaPublicRoutes);
 

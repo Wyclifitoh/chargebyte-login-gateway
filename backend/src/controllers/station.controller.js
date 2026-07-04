@@ -37,10 +37,10 @@ exports.getById = async (req, res, next) => {
 exports.create = async (req, res, next) => {
   try {
     const id = uuidv4();
-    const { name, address, latitude, longitude, county_name, open_hours, host_partner_id, revenue_share_percent, features } = req.body;
+    const { name, address, latitude, longitude, county_name, open_hours, host_partner_id, revenue_share_percent, features, allowed_radius_m } = req.body;
     await db.query(
-      'INSERT INTO cb_stations (id, name, address, latitude, longitude, county_name, open_hours, host_partner_id, revenue_share_percent, features) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [id, name, address, latitude || null, longitude || null, county_name || null, open_hours || null, host_partner_id || null, revenue_share_percent || 0, features ? JSON.stringify(features) : null]
+      'INSERT INTO cb_stations (id, name, address, latitude, longitude, county_name, open_hours, host_partner_id, revenue_share_percent, features, allowed_radius_m) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [id, name, address, latitude || null, longitude || null, county_name || null, open_hours || null, host_partner_id || null, revenue_share_percent || 0, features ? JSON.stringify(features) : null, allowed_radius_m ?? null]
     );
     res.status(201).json({ success: true, data: { id, ...req.body } });
   } catch (error) { next(error); }
@@ -48,7 +48,7 @@ exports.create = async (req, res, next) => {
 
 exports.update = async (req, res, next) => {
   try {
-    const fields = ['name', 'address', 'latitude', 'longitude', 'county_name', 'open_hours', 'host_partner_id', 'revenue_share_percent', 'features'];
+    const fields = ['name', 'address', 'latitude', 'longitude', 'county_name', 'open_hours', 'host_partner_id', 'revenue_share_percent', 'features', 'allowed_radius_m'];
     const updates = [];
     const values = [];
 
