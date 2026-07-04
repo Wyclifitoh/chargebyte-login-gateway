@@ -59,7 +59,6 @@ import type { Rental } from "@/types/dashboard";
 
 interface RentalRow extends Rental {
   station_name?: string;
-  machine_model?: string; // We'll use this instead of machine_name
 }
 
 const PAGE_SIZE = 25;
@@ -149,13 +148,11 @@ const RentalsPage = () => {
     id;
 
   // Get machine model from rentals data
-  const getMachineModel = (rental: RentalRow) => {
-    return rental.machine_model || rental.model || "N/A";
-  };
+  const getMachineModel = (rental: RentalRow) => rental.machine_model || "N/A";
 
   // Get unique machine models for filter
   const uniqueModels = Array.from(
-    new Set((rentals as RentalRow[]).map((r) => r.machine_model || r.model).filter(Boolean)),
+    new Set((rentals as RentalRow[]).map((r) => r.machine_model).filter(Boolean)),
   ).sort();
 
   // Local sort over the current page
@@ -479,7 +476,7 @@ const RentalsPage = () => {
               <tbody>
                 {sorted.map((r) => {
                   const shortId = getShortId(r.rental_code || r.id);
-                  const machineModel = r.machine_model || r.model || "N/A";
+                  const machineModel = r.machine_model || "N/A";
 
                   return (
                     <tr
@@ -588,7 +585,7 @@ const RentalsPage = () => {
               />
               <DetailRow
                 label="Machine Model"
-                value={selected.machine_model || selected.model || "N/A"}
+                value={selected.machine_model || "N/A"}
               />
               <DetailRow label="Start Time" value={formatDateTime(selected.start_time)} />
               <DetailRow
