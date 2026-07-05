@@ -1,5 +1,6 @@
 const { v4: uuidv4 } = require("uuid");
 const db = require("../config/database");
+const settings = require("../config/settings");
 
 // ---------- config ----------
 // Allowed clock-in/out window in Africa/Nairobi local time (24h).
