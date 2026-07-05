@@ -57,6 +57,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { id: "reports", label: "Reports", icon: FileText, path: "/dashboard/reports" },
       { id: "audit", label: "Audit Logs", icon: Shield, path: "/dashboard/audit" },
+      { id: "settings", label: "Settings", icon: Settings2, path: "/dashboard/settings" },
     ],
   },
 ];
