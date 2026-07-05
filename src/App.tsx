@@ -67,6 +67,7 @@ const App = () => (
             <Route path="/dashboard/reports" element={<DashboardRoute section="reports"><ReportsPage /></DashboardRoute>} />
             <Route path="/dashboard/support" element={<DashboardRoute section="support"><SupportPage /></DashboardRoute>} />
             <Route path="/dashboard/performance" element={<DashboardRoute section="performance"><PerformancePage /></DashboardRoute>} />
+            <Route path="/dashboard/settings" element={<DashboardRoute section="settings"><SettingsPage /></DashboardRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
