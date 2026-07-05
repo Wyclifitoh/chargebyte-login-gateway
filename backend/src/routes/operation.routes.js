@@ -2,6 +2,7 @@ const express = require('express');
 const { body, param } = require('express-validator');
 const { validate } = require('../middleware/validate.middleware');
 const { authenticate, authorize } = require('../middleware/auth.middleware');
+const { requireClockedIn } = require('../middleware/clockedIn.middleware');
 const controller = require('../controllers/operation.controller');
 
 const router = express.Router();
@@ -19,7 +20,7 @@ router.put('/leads/:id', [param('id').isUUID(), validate], controller.updateLead
 
 // Reports
 router.get('/reports', controller.getReports);
-router.post('/reports', [
+router.post('/reports', requireClockedIn, [
   body('title').trim().notEmpty(),
   body('type').isIn(['daily', 'weekly', 'monthly']),
   validate
