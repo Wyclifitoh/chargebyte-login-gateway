@@ -116,13 +116,23 @@ const SelfClock = () => {
         location_name: station?.name,
       });
       if (res.success) {
-        toast.success(event_type === "clock_in" ? "Clocked in" : "Clocked out");
+        const d = (res.data as { distance_m?: number | null })?.distance_m;
+        toast.success(
+          event_type === "clock_in"
+            ? `Clocked in${d != null ? ` · ${d}m from station` : ""}`
+            : "Clocked out",
+        );
         if (event_type === "clock_out") {
           // Auto-open shift report so the agent submits observations immediately
           setTimeout(() => setReportOpen(true), 400);
         }
       } else {
-        toast.error(res.error || "Rejected — outside allowed area");
+        const err = res.error || "Rejected — outside allowed area";
+        toast.error(err);
+        // If server says a report is required before clock-out, open the dialog
+        if (event_type === "clock_out" && /report/i.test(err)) {
+          setTimeout(() => setReportOpen(true), 300);
+        }
       }
       load();
     } finally { setBusy(false); }
