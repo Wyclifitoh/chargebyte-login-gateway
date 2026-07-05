@@ -28,6 +28,7 @@ import ClockInPage from "@/pages/dashboard/ClockInPage";
 import ReportsPage from "@/pages/dashboard/ReportsPage";
 import SupportPage from "@/pages/dashboard/SupportPage";
 import PerformancePage from "@/pages/dashboard/PerformancePage";
+import SettingsPage from "@/pages/dashboard/SettingsPage";
 
 const queryClient = new QueryClient();
 
