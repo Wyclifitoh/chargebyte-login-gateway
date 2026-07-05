@@ -383,8 +383,8 @@ exports.clock = async (req, res, next) => {
     await db.query(
       `INSERT INTO clock_events
        (id, team_member_id, system_user_id, event_type, ip_address, latitude, longitude,
-        accuracy_meters, matched_whitelist_id, station_id, location_name, status, reject_reason, user_agent)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        accuracy_meters, matched_whitelist_id, station_id, location_name, distance_m, status, reject_reason, user_agent)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
         member?.id || null,
@@ -397,6 +397,7 @@ exports.clock = async (req, res, next) => {
         matched?.id || null,
         station_id || null,
         resolvedLocation,
+        distance_m,
         status,
         matched ? null : reason,
         ua,
@@ -416,6 +417,7 @@ exports.clock = async (req, res, next) => {
         event_type,
         matched_whitelist: matched.name,
         location: resolvedLocation,
+        distance_m,
       },
     });
   } catch (e) {
