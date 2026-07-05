@@ -270,9 +270,69 @@ exports.clock = async (req, res, next) => {
     const ua = (req.get("User-Agent") || "").slice(0, 255);
     const member = await findTeamMember(req.user);
 
+    // ---- GPS station-radius check (Phase B) ----
+    // When a station_id is provided and the station has coords, verify the
+    // agent is physically within the allowed radius. Falls back to the
+    // system-wide default when the station has no per-station override.
+    let stationRow = null;
+    let distance_m = null;
+    if (station_id) {
+      const [ss] = await db.query(
+        "SELECT id, name, latitude, longitude, allowed_radius_m FROM cb_stations WHERE id = ? LIMIT 1",
+        [station_id],
+      );
+      stationRow = ss[0] || null;
+      if (stationRow && stationRow.latitude != null && stationRow.longitude != null) {
+        if (latitude == null || longitude == null) {
+          return res.status(422).json({
+            success: false,
+            error: "Location required. Enable GPS on your device to clock in at this station.",
+            code: "GPS_REQUIRED",
+          });
+        }
+        const defaultRadius = await settings.getInt("default_clockin_radius_m", 100);
+        const radius = Number(stationRow.allowed_radius_m) > 0
+          ? Number(stationRow.allowed_radius_m)
+          : defaultRadius;
+        distance_m = Math.round(
+          haversineMeters(
+            Number(latitude),
+            Number(longitude),
+            Number(stationRow.latitude),
+            Number(stationRow.longitude),
+          ),
+        );
+        if (distance_m > radius) {
+          return res.status(422).json({
+            success: false,
+            error: `You are ${distance_m}m from ${stationRow.name} — must be within ${radius}m to clock ${event_type === "clock_in" ? "in" : "out"}.`,
+            code: "OUT_OF_RANGE",
+            data: { distance_m, allowed_radius_m: radius, station: stationRow.name },
+          });
+        }
+      }
+    }
+
+    // ---- Report-before-clock-out gate (Phase B) ----
+    if (event_type === "clock_out") {
+      const today = new Date().toLocaleDateString("en-CA", { timeZone: "Africa/Nairobi" });
+      const [rep] = await db.query(
+        `SELECT id FROM daily_reports WHERE agent_user_id = ? AND report_date = ? LIMIT 1`,
+        [req.user.id, today],
+      );
+      if (!rep.length && !["super_admin", "admin"].includes(req.user.role)) {
+        return res.status(422).json({
+          success: false,
+          error: "You must submit today's shift report before clocking out.",
+          code: "REPORT_REQUIRED",
+        });
+      }
+    }
+
     // Resolve location_name (station name if station_id provided)
     let resolvedLocation = location_name || null;
-    if (station_id && !resolvedLocation) {
+    if (stationRow && !resolvedLocation) resolvedLocation = stationRow.name;
+    if (station_id && !resolvedLocation && !stationRow) {
       const [s] = await db.query(
         "SELECT name FROM cb_stations WHERE id = ? LIMIT 1",
         [station_id],
