@@ -54,7 +54,7 @@ const SettingsPage = () => {
   if (!isSuper) {
     return (
       <div>
-        <PageHeader title="Settings" description="System configuration" icon={Settings2} />
+        <PageHeader title="Settings" description="System configuration" />
         <div className="bg-card border border-border rounded-lg p-6 text-sm text-muted-foreground">
           Settings are managed by Super Admin.
         </div>
@@ -64,7 +64,7 @@ const SettingsPage = () => {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Settings" description="System-wide configuration" icon={Settings2} />
+      <PageHeader title="Settings" description="System-wide configuration" />
 
       <section className="bg-card border border-border rounded-lg p-6 space-y-4">
         <div>
