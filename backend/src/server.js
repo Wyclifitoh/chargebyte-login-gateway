@@ -29,6 +29,9 @@ const clockinRoutes = require("./routes/clockin.routes");
 const supportRoutes = require("./routes/support.routes");
 const performanceRoutes = require("./routes/performance.routes");
 const settingsRoutes = require("./routes/settings.routes");
+const chargenowRoutes = require("./routes/chargenow.routes");
+const chargenowPublicRoutes = require("./routes/chargenow-public.routes");
+const chargenowController = require("./controllers/chargenow.controller");
 const { errorHandler, notFound } = require("./middleware/error.middleware");
 
 const app = express();
