@@ -28,4 +28,10 @@ router.patch('/:id/status', authorize('super_admin', 'admin', 'staff'), [
   validate
 ], auditLog('UPDATE', 'machines'), controller.setStatus);
 
+// Manual manufacturer sync — delegates to ChargeNow service.
+const chargenowController = require('../controllers/chargenow.controller');
+router.post('/:id/sync', authorize('super_admin', 'admin', 'staff'), [
+  param('id').isUUID(), validate,
+], chargenowController.syncMachine);
+
 module.exports = router;
