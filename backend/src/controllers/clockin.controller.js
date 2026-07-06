@@ -11,10 +11,7 @@ const MIN_GAP_SECONDS = 30; // anti double-tap
 
 // ---------- helpers ----------
 function getClientIp(req) {
-  const fwd = (req.headers["x-forwarded-for"] || "")
-    .toString()
-    .split(",")[0]
-    .trim();
+  const fwd = (req.headers["x-forwarded-for"] || "").toString().split(",")[0].trim();
   let ip = fwd || req.ip || req.connection?.remoteAddress || "";
   if (ip.startsWith("::ffff:")) ip = ip.slice(7);
   return ip;
@@ -22,14 +19,8 @@ function getClientIp(req) {
 
 function ipv4ToInt(ip) {
   const parts = ip.split(".").map(Number);
-  if (
-    parts.length !== 4 ||
-    parts.some((n) => Number.isNaN(n) || n < 0 || n > 255)
-  )
-    return null;
-  return (
-    ((parts[0] << 24) >>> 0) + (parts[1] << 16) + (parts[2] << 8) + parts[3]
-  );
+  if (parts.length !== 4 || parts.some((n) => Number.isNaN(n) || n < 0 || n > 255)) return null;
+  return ((parts[0] << 24) >>> 0) + (parts[1] << 16) + (parts[2] << 8) + parts[3];
 }
 
 function ipInCidr(ip, cidr) {
@@ -65,9 +56,7 @@ function nairobiHour(date = new Date()) {
   });
   // dd/mm/yyyy, HH:MM:SS
   const m = s.match(/(\d{2}):(\d{2}):(\d{2})/);
-  return m
-    ? parseInt(m[1], 10) + parseInt(m[2], 10) / 60
-    : new Date().getHours();
+  return m ? parseInt(m[1], 10) + parseInt(m[2], 10) / 60 : new Date().getHours();
 }
 
 async function findTeamMember(user) {
@@ -112,20 +101,13 @@ exports.listWhitelist = async (_req, res, next) => {
 
 exports.createWhitelist = async (req, res, next) => {
   try {
-    const { name, type, ip_cidr, latitude, longitude, radius_meters, notes } =
-      req.body;
+    const { name, type, ip_cidr, latitude, longitude, radius_meters, notes } = req.body;
     if (!name || !type)
-      return res
-        .status(400)
-        .json({ success: false, error: "name and type required" });
+      return res.status(400).json({ success: false, error: "name and type required" });
     if ((type === "ip" || type === "cidr") && !ip_cidr)
-      return res
-        .status(400)
-        .json({ success: false, error: "ip_cidr required" });
+      return res.status(400).json({ success: false, error: "ip_cidr required" });
     if (type === "geo" && (latitude == null || longitude == null))
-      return res
-        .status(400)
-        .json({ success: false, error: "latitude/longitude required" });
+      return res.status(400).json({ success: false, error: "latitude/longitude required" });
     const id = uuidv4();
     await db.query(
       `INSERT INTO clockin_whitelist (id, name, type, ip_cidr, latitude, longitude, radius_meters, notes, is_active)
@@ -169,10 +151,7 @@ exports.updateWhitelist = async (req, res, next) => {
     }
     if (upd.length) {
       vals.push(req.params.id);
-      await db.query(
-        `UPDATE clockin_whitelist SET ${upd.join(", ")} WHERE id = ?`,
-        vals,
-      );
+      await db.query(`UPDATE clockin_whitelist SET ${upd.join(", ")} WHERE id = ?`, vals);
     }
     res.json({ success: true, data: { id: req.params.id } });
   } catch (e) {
@@ -182,9 +161,7 @@ exports.updateWhitelist = async (req, res, next) => {
 
 exports.removeWhitelist = async (req, res, next) => {
   try {
-    await db.query("DELETE FROM clockin_whitelist WHERE id = ?", [
-      req.params.id,
-    ]);
+    await db.query("DELETE FROM clockin_whitelist WHERE id = ?", [req.params.id]);
     res.json({ success: true, data: { message: "Whitelist entry removed" } });
   } catch (e) {
     next(e);
@@ -194,18 +171,9 @@ exports.removeWhitelist = async (req, res, next) => {
 // ---------- clock in/out ----------
 exports.clock = async (req, res, next) => {
   try {
-    const {
-      event_type,
-      latitude,
-      longitude,
-      accuracy,
-      station_id,
-      location_name,
-    } = req.body;
+    const { event_type, latitude, longitude, accuracy, station_id, location_name } = req.body;
     if (!["clock_in", "clock_out"].includes(event_type)) {
-      return res
-        .status(400)
-        .json({ success: false, error: "Invalid event_type" });
+      return res.status(400).json({ success: false, error: "Invalid event_type" });
     }
 
     // ---- timing rule: allowed Nairobi hours ----
@@ -230,40 +198,26 @@ exports.clock = async (req, res, next) => {
       // Only check approved sequence — rejected events don't count toward state
       const lastApproved = await getLastEvent(req.user.id);
       if (lastApproved) {
-        if (
-          event_type === "clock_in" &&
-          lastApproved.event_type === "clock_in"
-        ) {
-          return res
-            .status(409)
-            .json({
-              success: false,
-              error: "You are already clocked in. Clock out first.",
-            });
+        if (event_type === "clock_in" && lastApproved.event_type === "clock_in") {
+          return res.status(409).json({
+            success: false,
+            error: "You are already clocked in. Clock out first.",
+          });
         }
-        if (
-          event_type === "clock_out" &&
-          lastApproved.event_type !== "clock_in"
-        ) {
-          return res
-            .status(409)
-            .json({ success: false, error: "You are not clocked in." });
+        if (event_type === "clock_out" && lastApproved.event_type !== "clock_in") {
+          return res.status(409).json({ success: false, error: "You are not clocked in." });
         }
       } else if (event_type === "clock_out") {
-        return res
-          .status(409)
-          .json({
-            success: false,
-            error: "You have no active clock-in to close.",
-          });
-      }
-    } else if (event_type === "clock_out") {
-      return res
-        .status(409)
-        .json({
+        return res.status(409).json({
           success: false,
           error: "You have no active clock-in to close.",
         });
+      }
+    } else if (event_type === "clock_out") {
+      return res.status(409).json({
+        success: false,
+        error: "You have no active clock-in to close.",
+      });
     }
 
     const ip = getClientIp(req);
@@ -291,9 +245,10 @@ exports.clock = async (req, res, next) => {
           });
         }
         const defaultRadius = await settings.getInt("default_clockin_radius_m", 100);
-        const radius = Number(stationRow.allowed_radius_m) > 0
-          ? Number(stationRow.allowed_radius_m)
-          : defaultRadius;
+        const radius =
+          Number(stationRow.allowed_radius_m) > 0
+            ? Number(stationRow.allowed_radius_m)
+            : defaultRadius;
         distance_m = Math.round(
           haversineMeters(
             Number(latitude),
@@ -333,17 +288,12 @@ exports.clock = async (req, res, next) => {
     let resolvedLocation = location_name || null;
     if (stationRow && !resolvedLocation) resolvedLocation = stationRow.name;
     if (station_id && !resolvedLocation && !stationRow) {
-      const [s] = await db.query(
-        "SELECT name FROM cb_stations WHERE id = ? LIMIT 1",
-        [station_id],
-      );
+      const [s] = await db.query("SELECT name FROM cb_stations WHERE id = ? LIMIT 1", [station_id]);
       if (s.length) resolvedLocation = s[0].name;
     }
 
     // Evaluate whitelist
-    const [wl] = await db.query(
-      `SELECT * FROM clockin_whitelist WHERE is_active = 1`,
-    );
+    const [wl] = await db.query(`SELECT * FROM clockin_whitelist WHERE is_active = 1`);
     let matched = null;
     let reason = "";
     if (wl.length === 0) {
@@ -356,11 +306,7 @@ exports.clock = async (req, res, next) => {
             matched = w;
             break;
           }
-        } else if (
-          w.type === "geo" &&
-          w.latitude != null &&
-          w.longitude != null
-        ) {
+        } else if (w.type === "geo" && w.latitude != null && w.longitude != null) {
           if (latitude == null || longitude == null) continue;
           const dist = haversineMeters(
             Number(latitude),
@@ -374,8 +320,7 @@ exports.clock = async (req, res, next) => {
           }
         }
       }
-      if (!matched)
-        reason = `Location not whitelisted (IP: ${ip || "unknown"})`;
+      if (!matched) reason = `Location not whitelisted (IP: ${ip || "unknown"})`;
     }
 
     const id = uuidv4();
@@ -405,9 +350,7 @@ exports.clock = async (req, res, next) => {
     );
 
     if (!matched) {
-      return res
-        .status(403)
-        .json({ success: false, error: reason, data: { id, status } });
+      return res.status(403).json({ success: false, error: reason, data: { id, status } });
     }
     res.json({
       success: true,
@@ -535,8 +478,7 @@ exports.shiftSummary = async (req, res, next) => {
       [req.user.id, date],
     );
     const firstIn = ev.find((e) => e.event_type === "clock_in") || null;
-    const lastOut =
-      [...ev].reverse().find((e) => e.event_type === "clock_out") || null;
+    const lastOut = [...ev].reverse().find((e) => e.event_type === "clock_out") || null;
     const station_id = firstIn?.station_id || null;
     const location = firstIn?.location_name || null;
 
@@ -544,14 +486,10 @@ exports.shiftSummary = async (req, res, next) => {
     if (firstIn && lastOut) {
       hours_worked = Math.max(
         0,
-        (new Date(lastOut.event_time) - new Date(firstIn.event_time)) /
-          3_600_000,
+        (new Date(lastOut.event_time) - new Date(firstIn.event_time)) / 3_600_000,
       );
     } else if (firstIn) {
-      hours_worked = Math.max(
-        0,
-        (Date.now() - new Date(firstIn.event_time).getTime()) / 3_600_000,
-      );
+      hours_worked = Math.max(0, (Date.now() - new Date(firstIn.event_time).getTime()) / 3_600_000);
     }
 
     // Auto rental metrics for this station/date
@@ -657,13 +595,9 @@ exports.upsertReport = async (req, res, next) => {
       suggestions = null,
       photos = null,
     } = req.body;
-    if (!location)
-      return res
-        .status(400)
-        .json({ success: false, error: "location required" });
+    if (!location) return res.status(400).json({ success: false, error: "location required" });
     const date =
-      report_date ||
-      new Date().toLocaleDateString("en-CA", { timeZone: "Africa/Nairobi" });
+      report_date || new Date().toLocaleDateString("en-CA", { timeZone: "Africa/Nairobi" });
 
     // Auto-pull rentals/returns/pending for this agent's station/date
     let rentalsAuto = 0,

@@ -48,7 +48,10 @@ const MachinesPage = () => {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Machines Overview" description="Live cabinet telemetry from the manufacturer API." />
+      <PageHeader
+        title="Machines Overview"
+        description="Live cabinet telemetry from the manufacturer API."
+      />
 
       {isFallback && !isLoading && (
         <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/5 px-4 py-2 text-sm text-yellow-700 dark:text-yellow-400">
@@ -62,7 +65,10 @@ const MachinesPage = () => {
         <ErrorState title="Couldn't load machines" message={error} onRetry={refetch} />
       ) : machines.length === 0 ? (
         <div className="rounded-xl border border-border bg-card shadow-sm">
-          <EmptyState title="No machines registered" description="Add your first charging machine to get started." />
+          <EmptyState
+            title="No machines registered"
+            description="Add your first charging machine to get started."
+          />
         </div>
       ) : (
         <DataTable
@@ -72,9 +78,21 @@ const MachinesPage = () => {
           columns={[
             { key: "name", label: "Name" },
             { key: "station_name", label: "Station" },
-            { key: "cabinet_device_id", label: "Device ID", render: (v) => <span className="font-mono text-xs">{v ? String(v) : "—"}</span> },
-            { key: "manufacturer_cabinet_id", label: "Cabinet ID", render: (v) => <span className="font-mono text-xs">{v ? String(v) : "—"}</span> },
-            { key: "is_online", label: "Online", render: (v) => <StatusBadge status={v ? "online" : "offline"} /> },
+            {
+              key: "model",
+              label: "Device ID",
+              render: (v) => <span className="font-mono text-xs">{v ? String(v) : "—"}</span>,
+            },
+            {
+              key: "manufacturer_cabinet_id",
+              label: "Cabinet ID",
+              render: (v) => <span className="font-mono text-xs">{v ? String(v) : "—"}</span>,
+            },
+            {
+              key: "is_online",
+              label: "Online",
+              render: (v) => <StatusBadge status={v ? "online" : "offline"} />,
+            },
             { key: "signal_strength", label: "Signal", render: (v) => (v == null ? "—" : `${v}`) },
             {
               key: "empty_slots",
@@ -83,7 +101,11 @@ const MachinesPage = () => {
                 `${row.empty_slots ?? "—"} / ${row.busy_slots ?? "—"} / ${row.total_slots ?? "—"}`,
             },
             { key: "status", label: "Status", render: (v) => <StatusBadge status={String(v)} /> },
-            { key: "last_synced_at", label: "Last sync", render: (v) => <span>{v ? formatDate(String(v)) : "—"}</span> },
+            {
+              key: "last_synced_at",
+              label: "Last sync",
+              render: (v) => <span>{v ? formatDate(String(v)) : "—"}</span>,
+            },
             {
               key: "id",
               label: "Actions",
@@ -91,10 +113,12 @@ const MachinesPage = () => {
                 <Button
                   size="sm"
                   variant="outline"
-                  disabled={!row.cabinet_device_id || syncing === row.id}
+                  disabled={!row.model || syncing === row.id}
                   onClick={() => runSync(row.id)}
                 >
-                  <RefreshCw className={`h-3.5 w-3.5 mr-1 ${syncing === row.id ? "animate-spin" : ""}`} />
+                  <RefreshCw
+                    className={`h-3.5 w-3.5 mr-1 ${syncing === row.id ? "animate-spin" : ""}`}
+                  />
                   Sync
                 </Button>
               ),
