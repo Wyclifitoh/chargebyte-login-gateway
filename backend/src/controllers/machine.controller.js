@@ -37,10 +37,20 @@ exports.getById = async (req, res, next) => {
 exports.create = async (req, res, next) => {
   try {
     const id = uuidv4();
-    const { name, station_id, model, qr_code, total_slots } = req.body;
+    const {
+      name, station_id, model, qr_code, total_slots,
+      cabinet_device_id, cabinet_model, manufacturer_cabinet_id,
+    } = req.body;
     await db.query(
-      'INSERT INTO machines (id, station_id, name, model, qr_code, total_slots, available_slots) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [id, station_id, name, model || null, qr_code || `QR-${id.slice(0,8)}`, total_slots, total_slots]
+      `INSERT INTO machines
+         (id, station_id, name, model, qr_code, total_slots, available_slots,
+          cabinet_device_id, cabinet_model, manufacturer_cabinet_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        id, station_id, name, model || null,
+        qr_code || `QR-${id.slice(0, 8)}`, total_slots, total_slots,
+        cabinet_device_id || null, cabinet_model || null, manufacturer_cabinet_id || null,
+      ],
     );
     res.status(201).json({ success: true, data: { id, ...req.body } });
   } catch (error) { next(error); }
@@ -48,7 +58,10 @@ exports.create = async (req, res, next) => {
 
 exports.update = async (req, res, next) => {
   try {
-    const fields = ['name', 'station_id', 'model', 'qr_code', 'total_slots', 'available_slots', 'is_active'];
+    const fields = [
+      'name', 'station_id', 'model', 'qr_code', 'total_slots', 'available_slots', 'is_active',
+      'cabinet_device_id', 'cabinet_model', 'manufacturer_cabinet_id',
+    ];
     const updates = [];
     const values = [];
     for (const f of fields) {
