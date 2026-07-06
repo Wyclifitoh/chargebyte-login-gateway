@@ -1,8 +1,7 @@
 // Real API service layer with JWT token management.
 // Centralized client: auto-attaches bearer token, dedupes refresh, surfaces typed errors.
 
-const API_BASE_URL =
-  import.meta.env.VITE_API_URL || "https://dash.chargebyte.io/api";
+const API_BASE_URL = import.meta.env.VITE_API_URL || "https://dash.chargebyte.io/api";
 
 export interface ApiResponse<T> {
   data: T;
@@ -28,8 +27,7 @@ const tokenStore = {
     const u = localStorage.getItem("cb_user");
     return u ? JSON.parse(u) : null;
   },
-  setUser: (user: unknown) =>
-    localStorage.setItem("cb_user", JSON.stringify(user)),
+  setUser: (user: unknown) => localStorage.setItem("cb_user", JSON.stringify(user)),
 };
 
 export { tokenStore };
@@ -77,10 +75,7 @@ function buildQS(params?: Record<string, string | number | boolean | undefined |
   return s ? `?${s}` : "";
 }
 
-async function authFetch(
-  url: string,
-  options: RequestInit = {},
-): Promise<Response> {
+async function authFetch(url: string, options: RequestInit = {}): Promise<Response> {
   const token = tokenStore.getAccessToken();
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -106,39 +101,53 @@ async function authFetch(
 
 async function apiGet<T>(url: string): Promise<ApiResponse<T>> {
   const res = await authFetch(url);
-  try { return await res.json(); }
-  catch { return { success: false, data: null as unknown as T, error: `HTTP ${res.status}` }; }
+  try {
+    return await res.json();
+  } catch {
+    return { success: false, data: null as unknown as T, error: `HTTP ${res.status}` };
+  }
 }
 async function apiPost<T>(url: string, body: unknown): Promise<ApiResponse<T>> {
   const res = await authFetch(url, { method: "POST", body: JSON.stringify(body) });
-  try { return await res.json(); }
-  catch { return { success: false, data: null as unknown as T, error: `HTTP ${res.status}` }; }
+  try {
+    return await res.json();
+  } catch {
+    return { success: false, data: null as unknown as T, error: `HTTP ${res.status}` };
+  }
 }
 async function apiPut<T>(url: string, body: unknown): Promise<ApiResponse<T>> {
   const res = await authFetch(url, { method: "PUT", body: JSON.stringify(body) });
-  try { return await res.json(); }
-  catch { return { success: false, data: null as unknown as T, error: `HTTP ${res.status}` }; }
+  try {
+    return await res.json();
+  } catch {
+    return { success: false, data: null as unknown as T, error: `HTTP ${res.status}` };
+  }
 }
 async function apiDelete<T>(url: string): Promise<ApiResponse<T>> {
   const res = await authFetch(url, { method: "DELETE" });
-  try { return await res.json(); }
-  catch { return { success: false, data: null as unknown as T, error: `HTTP ${res.status}` }; }
+  try {
+    return await res.json();
+  } catch {
+    return { success: false, data: null as unknown as T, error: `HTTP ${res.status}` };
+  }
 }
 async function apiPatch<T>(url: string, body: unknown): Promise<ApiResponse<T>> {
   const res = await authFetch(url, { method: "PATCH", body: JSON.stringify(body) });
-  try { return await res.json(); }
-  catch { return { success: false, data: null as unknown as T, error: `HTTP ${res.status}` }; }
+  try {
+    return await res.json();
+  } catch {
+    return { success: false, data: null as unknown as T, error: `HTTP ${res.status}` };
+  }
 }
-
 
 // ---------------- Endpoints ----------------
 export const api = {
   auth: {
     login: (email: string, password: string) =>
-      apiPost<{ user: unknown; accessToken: string; refreshToken: string }>(
-        "/auth/login",
-        { email, password },
-      ),
+      apiPost<{ user: unknown; accessToken: string; refreshToken: string }>("/auth/login", {
+        email,
+        password,
+      }),
     logout: () => apiPost("/auth/logout", {}),
     refresh: (refreshToken: string) => apiPost("/auth/refresh", { refreshToken }),
     getMe: () => apiGet("/auth/me"),
@@ -175,13 +184,12 @@ export const api = {
     create: (data: unknown) => apiPost("/machines", data),
     update: (id: string, data: unknown) => apiPut(`/machines/${id}`, data),
     delete: (id: string) => apiDelete(`/machines/${id}`),
-    sync: (id: string) => apiPost(`/machines/${id}/sync`, {}),
+    sync: (id: string) => apiPost(`/chargenow/machines/${id}/sync`, {}),
   },
 
   chargenow: {
     getConfig: () => apiGet("/chargenow/config"),
-    setConfig: (data: { pushUrl: string; events?: string[] }) =>
-      apiPost("/chargenow/config", data),
+    setConfig: (data: { pushUrl: string; events?: string[] }) => apiPost("/chargenow/config", data),
   },
 
   stations: {
@@ -257,10 +265,8 @@ export const api = {
   },
 
   profile: {
-    setPin: (data: { current_password: string; pin: string }) =>
-      apiPost("/users/me/pin", data),
-    changePin: (data: { current_pin: string; new_pin: string }) =>
-      apiPut("/users/me/pin", data),
+    setPin: (data: { current_password: string; pin: string }) => apiPost("/users/me/pin", data),
+    changePin: (data: { current_pin: string; new_pin: string }) => apiPut("/users/me/pin", data),
   },
 
   events: {
@@ -302,7 +308,6 @@ export const api = {
     create: (data: unknown) => apiPost("/notifications", data),
   },
 
-
   operations: {
     getLeads: (params?: Record<string, string | number | undefined>) =>
       apiGet(`/operations/leads${buildQS(params)}`),
@@ -325,8 +330,14 @@ export const api = {
   },
 
   clockin: {
-    clock: (data: { event_type: "clock_in" | "clock_out"; latitude?: number; longitude?: number; accuracy?: number; station_id?: string; location_name?: string }) =>
-      apiPost("/clockin/clock", data),
+    clock: (data: {
+      event_type: "clock_in" | "clock_out";
+      latitude?: number;
+      longitude?: number;
+      accuracy?: number;
+      station_id?: string;
+      location_name?: string;
+    }) => apiPost("/clockin/clock", data),
     myEvents: () => apiGet("/clockin/events/me"),
     events: (params?: Record<string, string | number | undefined>) =>
       apiGet(`/clockin/events${buildQS(params)}`),
