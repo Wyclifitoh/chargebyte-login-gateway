@@ -29,6 +29,9 @@ const clockinRoutes = require("./routes/clockin.routes");
 const supportRoutes = require("./routes/support.routes");
 const performanceRoutes = require("./routes/performance.routes");
 const settingsRoutes = require("./routes/settings.routes");
+const chargenowRoutes = require("./routes/chargenow.routes");
+const chargenowPublicRoutes = require("./routes/chargenow-public.routes");
+const chargenowController = require("./controllers/chargenow.controller");
 const { errorHandler, notFound } = require("./middleware/error.middleware");
 
 const app = express();
@@ -61,8 +64,17 @@ const authLimiter = rateLimit({
 });
 app.use("/api/auth/login", authLimiter);
 
-// Body parsing
-app.use(express.json({ limit: "10kb" }));
+// Body parsing — capture raw body so ChargeNow webhook can verify HMAC.
+app.use(
+  express.json({
+    limit: "100kb",
+    verify: (req, _res, buf) => {
+      if (req.originalUrl.startsWith("/api/webhooks/")) {
+        req.rawBody = Buffer.from(buf);
+      }
+    },
+  }),
+);
 app.use(express.urlencoded({ extended: true, limit: "10kb" }));
 
 // Logging
@@ -98,6 +110,9 @@ app.use("/api/clockin", clockinRoutes);
 app.use("/api/support", supportRoutes);
 app.use("/api/performance", performanceRoutes);
 app.use("/api/settings", settingsRoutes);
+app.use("/api/chargenow", chargenowRoutes);
+// Public webhooks (manufacturer POSTs here — no auth, signature-verified)
+app.use("/api/webhooks", chargenowPublicRoutes);
 // Public M-Pesa callbacks (Safaricom hits these — no auth)
 app.use("/api/public/mpesa", mpesaPublicRoutes);
 
@@ -110,6 +125,8 @@ app.listen(PORT, () => {
   console.log(
     `ChargeByte API running on port ${PORT} in ${process.env.NODE_ENV || "development"} mode`,
   );
+  // Kick off ChargeNow background cabinet sync (every 5 min)
+  try { chargenowController.startBackgroundSync(); } catch (e) { console.error("bg sync start:", e.message); }
 });
 
 module.exports = app;

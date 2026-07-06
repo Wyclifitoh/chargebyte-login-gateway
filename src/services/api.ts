@@ -175,6 +175,13 @@ export const api = {
     create: (data: unknown) => apiPost("/machines", data),
     update: (id: string, data: unknown) => apiPut(`/machines/${id}`, data),
     delete: (id: string) => apiDelete(`/machines/${id}`),
+    sync: (id: string) => apiPost(`/machines/${id}/sync`, {}),
+  },
+
+  chargenow: {
+    getConfig: () => apiGet("/chargenow/config"),
+    setConfig: (data: { pushUrl: string; events?: string[] }) =>
+      apiPost("/chargenow/config", data),
   },
 
   stations: {
