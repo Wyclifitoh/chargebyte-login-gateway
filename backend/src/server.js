@@ -125,6 +125,8 @@ app.listen(PORT, () => {
   console.log(
     `ChargeByte API running on port ${PORT} in ${process.env.NODE_ENV || "development"} mode`,
   );
+  // Kick off ChargeNow background cabinet sync (every 5 min)
+  try { chargenowController.startBackgroundSync(); } catch (e) { console.error("bg sync start:", e.message); }
 });
 
 module.exports = app;
