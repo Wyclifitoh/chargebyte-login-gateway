@@ -110,6 +110,9 @@ app.use("/api/clockin", clockinRoutes);
 app.use("/api/support", supportRoutes);
 app.use("/api/performance", performanceRoutes);
 app.use("/api/settings", settingsRoutes);
+app.use("/api/chargenow", chargenowRoutes);
+// Public webhooks (manufacturer POSTs here — no auth, signature-verified)
+app.use("/api/webhooks", chargenowPublicRoutes);
 // Public M-Pesa callbacks (Safaricom hits these — no auth)
 app.use("/api/public/mpesa", mpesaPublicRoutes);
 
