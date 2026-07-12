@@ -3,9 +3,32 @@ import { useAuth } from "@/contexts/AuthContext";
 import { ROLE_NAV_ACCESS, ROLE_LABELS, UserRole } from "@/types/dashboard";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
-  LogOut, ChevronDown, LayoutDashboard, Car, Cpu, MapPin, DollarSign, Users,
-  Megaphone, ClipboardList, Menu, X, CreditCard, Shield, Briefcase, Bell,
-  KeyRound, Smartphone, Clock, FileText, LifeBuoy, Trophy, Settings2, BarChart3, LucideIcon,
+  LogOut,
+  ChevronDown,
+  LayoutDashboard,
+  Car,
+  Cpu,
+  MapPin,
+  DollarSign,
+  Users,
+  Megaphone,
+  ClipboardList,
+  Menu,
+  X,
+  CreditCard,
+  Shield,
+  Briefcase,
+  Bell,
+  KeyRound,
+  Smartphone,
+  Clock,
+  FileText,
+  LifeBuoy,
+  Trophy,
+  Settings2,
+  BarChart3,
+  Package,
+  LucideIcon,
 } from "lucide-react";
 import logo from "@/assets/chargebyte-logo.png";
 import SetPinDialog from "@/components/SetPinDialog";
@@ -17,7 +40,9 @@ type NavGroup = { id: string; label: string; icon: LucideIcon; items: NavLeaf[] 
 
 const NAV_GROUPS: NavGroup[] = [
   {
-    id: "operations", label: "Operations", icon: Briefcase,
+    id: "operations",
+    label: "Operations",
+    icon: Briefcase,
     items: [
       { id: "rentals", label: "Rentals", icon: Car, path: "/dashboard/rentals" },
       { id: "machines", label: "Machines", icon: Cpu, path: "/dashboard/machines" },
@@ -25,18 +50,28 @@ const NAV_GROUPS: NavGroup[] = [
       { id: "partner", label: "My Machines", icon: Cpu, path: "/dashboard/partner" },
       { id: "operations", label: "Field Ops", icon: Briefcase, path: "/dashboard/operations" },
       { id: "support", label: "Support", icon: LifeBuoy, path: "/dashboard/support" },
+      { id: "assets", label: "Asset Tracker", icon: Package, path: "/dashboard/assets" },
     ],
   },
   {
-    id: "finance", label: "Finance", icon: DollarSign,
+    id: "finance",
+    label: "Finance",
+    icon: DollarSign,
     items: [
       { id: "revenue", label: "Revenue", icon: DollarSign, path: "/dashboard/revenue" },
-      { id: "transactions", label: "Transactions", icon: CreditCard, path: "/dashboard/transactions" },
+      {
+        id: "transactions",
+        label: "Transactions",
+        icon: CreditCard,
+        path: "/dashboard/transactions",
+      },
       { id: "mpesa", label: "M-Pesa", icon: Smartphone, path: "/dashboard/mpesa" },
     ],
   },
   {
-    id: "people", label: "People", icon: Users,
+    id: "people",
+    label: "People",
+    icon: Users,
     items: [
       { id: "users", label: "Users", icon: Users, path: "/dashboard/users" },
       { id: "partners", label: "Partners", icon: Briefcase, path: "/dashboard/partners" },
@@ -46,14 +81,18 @@ const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
-    id: "marketing", label: "Marketing", icon: Megaphone,
+    id: "marketing",
+    label: "Marketing",
+    icon: Megaphone,
     items: [
       { id: "campaigns", label: "Campaigns", icon: Megaphone, path: "/dashboard/campaigns" },
       { id: "forms", label: "Forms", icon: ClipboardList, path: "/dashboard/forms" },
     ],
   },
   {
-    id: "insights", label: "Insights", icon: BarChart3,
+    id: "insights",
+    label: "Insights",
+    icon: BarChart3,
     items: [
       { id: "reports", label: "Reports", icon: FileText, path: "/dashboard/reports" },
       { id: "audit", label: "Audit Logs", icon: Shield, path: "/dashboard/audit" },
@@ -62,18 +101,29 @@ const NAV_GROUPS: NavGroup[] = [
   },
 ];
 
-const OVERVIEW: NavLeaf = { id: "overview", label: "Overview", icon: LayoutDashboard, path: "/dashboard" };
+const OVERVIEW: NavLeaf = {
+  id: "overview",
+  label: "Overview",
+  icon: LayoutDashboard,
+  path: "/dashboard",
+};
 
 function filterGroupsForRole(role: UserRole): NavGroup[] {
   const allowed = new Set(ROLE_NAV_ACCESS[role]);
-  return NAV_GROUPS
-    .map((g) => ({ ...g, items: g.items.filter((i) => allowed.has(i.id)) }))
-    .filter((g) => g.items.length > 0);
+  return NAV_GROUPS.map((g) => ({ ...g, items: g.items.filter((i) => allowed.has(i.id)) })).filter(
+    (g) => g.items.length > 0,
+  );
 }
 
 // ---------------- Dropdown ----------------
-function NavDropdown({ group, activePath, onNavigate }: {
-  group: NavGroup; activePath: string; onNavigate: (p: string) => void;
+function NavDropdown({
+  group,
+  activePath,
+  onNavigate,
+}: {
+  group: NavGroup;
+  activePath: string;
+  onNavigate: (p: string) => void;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -108,9 +158,14 @@ function NavDropdown({ group, activePath, onNavigate }: {
             return (
               <button
                 key={item.id}
-                onClick={() => { onNavigate(item.path); setOpen(false); }}
+                onClick={() => {
+                  onNavigate(item.path);
+                  setOpen(false);
+                }}
                 className={`flex w-full items-center gap-2 px-3 py-2 text-sm transition-colors ${
-                  isActive ? "bg-primary/10 text-primary font-medium" : "text-foreground hover:bg-muted"
+                  isActive
+                    ? "bg-primary/10 text-primary font-medium"
+                    : "text-foreground hover:bg-muted"
                 }`}
               >
                 <item.icon className="h-4 w-4" />
@@ -145,23 +200,38 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
     };
     load();
     const t = setInterval(load, 60000);
-    return () => { cancelled = true; clearInterval(t); };
+    return () => {
+      cancelled = true;
+      clearInterval(t);
+    };
   }, [user, location.pathname]);
 
-  const groups = useMemo(() => user ? filterGroupsForRole(user.role) : [], [user]);
+  const groups = useMemo(() => (user ? filterGroupsForRole(user.role) : []), [user]);
   const allowed = user ? new Set(ROLE_NAV_ACCESS[user.role]) : new Set<string>();
   const showOverview = allowed.has("overview");
   const alertsAllowed = allowed.has("notifications");
 
   if (!user) return null;
 
-  const handleLogout = () => { logout(); navigate("/"); };
+  const handleLogout = () => {
+    logout();
+    navigate("/");
+  };
 
   // Flat list for mobile
   const flatItems: NavLeaf[] = [
     ...(showOverview ? [OVERVIEW] : []),
     ...groups.flatMap((g) => g.items),
-    ...(alertsAllowed ? [{ id: "notifications", label: "Alerts", icon: Bell, path: "/dashboard/notifications" } as NavLeaf] : []),
+    ...(alertsAllowed
+      ? [
+          {
+            id: "notifications",
+            label: "Alerts",
+            icon: Bell,
+            path: "/dashboard/notifications",
+          } as NavLeaf,
+        ]
+      : []),
   ];
 
   return (
@@ -211,7 +281,10 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
                   </div>
                   {user.role === "super_admin" && (
                     <button
-                      onClick={() => { setPinOpen(true); setProfileOpen(false); }}
+                      onClick={() => {
+                        setPinOpen(true);
+                        setProfileOpen(false);
+                      }}
                       className="flex w-full items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-muted transition-colors"
                     >
                       <KeyRound className="h-4 w-4" />
@@ -257,7 +330,12 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
               </button>
             )}
             {groups.map((g) => (
-              <NavDropdown key={g.id} group={g} activePath={location.pathname} onNavigate={navigate} />
+              <NavDropdown
+                key={g.id}
+                group={g}
+                activePath={location.pathname}
+                onNavigate={navigate}
+              />
             ))}
           </div>
           {/* Mobile flat list */}
@@ -268,9 +346,14 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
                 return (
                   <button
                     key={item.id}
-                    onClick={() => { navigate(item.path); setMobileMenuOpen(false); }}
+                    onClick={() => {
+                      navigate(item.path);
+                      setMobileMenuOpen(false);
+                    }}
                     className={`flex w-full items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      isActive ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted"
+                      isActive
+                        ? "bg-primary/10 text-primary"
+                        : "text-muted-foreground hover:bg-muted"
                     }`}
                   >
                     <item.icon className="h-4 w-4" />

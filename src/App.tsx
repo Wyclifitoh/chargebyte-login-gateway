@@ -29,6 +29,7 @@ import ReportsPage from "@/pages/dashboard/ReportsPage";
 import SupportPage from "@/pages/dashboard/SupportPage";
 import PerformancePage from "@/pages/dashboard/PerformancePage";
 import SettingsPage from "@/pages/dashboard/SettingsPage";
+import AssetsPage from "@/pages/dashboard/AssetsPage";
 
 const queryClient = new QueryClient();
 
@@ -47,27 +48,182 @@ const App = () => (
         <AuthProvider>
           <Routes>
             <Route path="/" element={<Index />} />
-            <Route path="/dashboard" element={<DashboardRoute section="overview"><OverviewPage /></DashboardRoute>} />
-            <Route path="/dashboard/rentals" element={<DashboardRoute section="rentals"><RentalsPage /></DashboardRoute>} />
-            <Route path="/dashboard/machines" element={<DashboardRoute section="machines"><MachinesPage /></DashboardRoute>} />
-            <Route path="/dashboard/stations" element={<DashboardRoute section="stations"><StationsPage /></DashboardRoute>} />
-            <Route path="/dashboard/revenue" element={<DashboardRoute section="revenue"><RevenuePage /></DashboardRoute>} />
-            <Route path="/dashboard/users" element={<DashboardRoute section="users"><UsersPage /></DashboardRoute>} />
-            <Route path="/dashboard/campaigns" element={<DashboardRoute section="campaigns"><CampaignsPage /></DashboardRoute>} />
-            <Route path="/dashboard/forms" element={<DashboardRoute section="forms"><FormsPage /></DashboardRoute>} />
-            <Route path="/dashboard/partner" element={<DashboardRoute section="partner"><PartnerDashboardPage /></DashboardRoute>} />
-            <Route path="/dashboard/partners" element={<DashboardRoute section="partners"><PartnersPage /></DashboardRoute>} />
-            <Route path="/dashboard/adclients" element={<DashboardRoute section="adclients"><AdClientsPage /></DashboardRoute>} />
-            <Route path="/dashboard/transactions" element={<DashboardRoute section="transactions"><TransactionsPage /></DashboardRoute>} />
-            <Route path="/dashboard/mpesa" element={<DashboardRoute section="mpesa"><MpesaPage /></DashboardRoute>} />
-            <Route path="/dashboard/audit" element={<DashboardRoute section="audit"><AuditLogsPage /></DashboardRoute>} />
-            <Route path="/dashboard/operations" element={<DashboardRoute section="operations"><OperationsPage /></DashboardRoute>} />
-            <Route path="/dashboard/notifications" element={<DashboardRoute section="notifications"><NotificationsPage /></DashboardRoute>} />
-            <Route path="/dashboard/clockin" element={<DashboardRoute section="clockin"><ClockInPage /></DashboardRoute>} />
-            <Route path="/dashboard/reports" element={<DashboardRoute section="reports"><ReportsPage /></DashboardRoute>} />
-            <Route path="/dashboard/support" element={<DashboardRoute section="support"><SupportPage /></DashboardRoute>} />
-            <Route path="/dashboard/performance" element={<DashboardRoute section="performance"><PerformancePage /></DashboardRoute>} />
-            <Route path="/dashboard/settings" element={<DashboardRoute section="settings"><SettingsPage /></DashboardRoute>} />
+            <Route
+              path="/dashboard"
+              element={
+                <DashboardRoute section="overview">
+                  <OverviewPage />
+                </DashboardRoute>
+              }
+            />
+            <Route
+              path="/dashboard/rentals"
+              element={
+                <DashboardRoute section="rentals">
+                  <RentalsPage />
+                </DashboardRoute>
+              }
+            />
+            <Route
+              path="/dashboard/machines"
+              element={
+                <DashboardRoute section="machines">
+                  <MachinesPage />
+                </DashboardRoute>
+              }
+            />
+            <Route
+              path="/dashboard/stations"
+              element={
+                <DashboardRoute section="stations">
+                  <StationsPage />
+                </DashboardRoute>
+              }
+            />
+            <Route
+              path="/dashboard/revenue"
+              element={
+                <DashboardRoute section="revenue">
+                  <RevenuePage />
+                </DashboardRoute>
+              }
+            />
+            <Route
+              path="/dashboard/users"
+              element={
+                <DashboardRoute section="users">
+                  <UsersPage />
+                </DashboardRoute>
+              }
+            />
+            <Route
+              path="/dashboard/campaigns"
+              element={
+                <DashboardRoute section="campaigns">
+                  <CampaignsPage />
+                </DashboardRoute>
+              }
+            />
+            <Route
+              path="/dashboard/forms"
+              element={
+                <DashboardRoute section="forms">
+                  <FormsPage />
+                </DashboardRoute>
+              }
+            />
+            <Route
+              path="/dashboard/partner"
+              element={
+                <DashboardRoute section="partner">
+                  <PartnerDashboardPage />
+                </DashboardRoute>
+              }
+            />
+            <Route
+              path="/dashboard/partners"
+              element={
+                <DashboardRoute section="partners">
+                  <PartnersPage />
+                </DashboardRoute>
+              }
+            />
+            <Route
+              path="/dashboard/adclients"
+              element={
+                <DashboardRoute section="adclients">
+                  <AdClientsPage />
+                </DashboardRoute>
+              }
+            />
+            <Route
+              path="/dashboard/transactions"
+              element={
+                <DashboardRoute section="transactions">
+                  <TransactionsPage />
+                </DashboardRoute>
+              }
+            />
+            <Route
+              path="/dashboard/mpesa"
+              element={
+                <DashboardRoute section="mpesa">
+                  <MpesaPage />
+                </DashboardRoute>
+              }
+            />
+            <Route
+              path="/dashboard/audit"
+              element={
+                <DashboardRoute section="audit">
+                  <AuditLogsPage />
+                </DashboardRoute>
+              }
+            />
+            <Route
+              path="/dashboard/operations"
+              element={
+                <DashboardRoute section="operations">
+                  <OperationsPage />
+                </DashboardRoute>
+              }
+            />
+            <Route
+              path="/dashboard/notifications"
+              element={
+                <DashboardRoute section="notifications">
+                  <NotificationsPage />
+                </DashboardRoute>
+              }
+            />
+            <Route
+              path="/dashboard/clockin"
+              element={
+                <DashboardRoute section="clockin">
+                  <ClockInPage />
+                </DashboardRoute>
+              }
+            />
+            <Route
+              path="/dashboard/reports"
+              element={
+                <DashboardRoute section="reports">
+                  <ReportsPage />
+                </DashboardRoute>
+              }
+            />
+            <Route
+              path="/dashboard/support"
+              element={
+                <DashboardRoute section="support">
+                  <SupportPage />
+                </DashboardRoute>
+              }
+            />
+            <Route
+              path="/dashboard/performance"
+              element={
+                <DashboardRoute section="performance">
+                  <PerformancePage />
+                </DashboardRoute>
+              }
+            />
+            <Route
+              path="/dashboard/settings"
+              element={
+                <DashboardRoute section="settings">
+                  <SettingsPage />
+                </DashboardRoute>
+              }
+            />
+            <Route
+              path="/dashboard/assets"
+              element={
+                <DashboardRoute section="assets">
+                  <AssetsPage />
+                </DashboardRoute>
+              }
+            />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>

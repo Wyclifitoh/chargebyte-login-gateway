@@ -63,6 +63,7 @@ export const ROLE_NAV_ACCESS: Record<UserRole, string[]> = {
     "support",
     "performance",
     "settings",
+    "assets",
   ],
   admin: [
     "overview",
@@ -78,6 +79,7 @@ export const ROLE_NAV_ACCESS: Record<UserRole, string[]> = {
     "support",
     "performance",
     "settings",
+    "assets",
   ],
   staff: ["overview", "rentals", "clockin", "reports", "notifications", "support"],
   location_partner: ["overview", "partner", "revenue", "notifications"],
@@ -379,4 +381,55 @@ export interface SupportTicket {
   created_at: string;
   updated_at: string;
   comments?: SupportTicketComment[];
+}
+
+export type AssetCategory =
+  | "electronics"
+  | "branded"
+  | "tools"
+  | "vehicles"
+  | "furniture"
+  | "other";
+export type AssetStatus = "in_use" | "in_storage" | "repair" | "lost" | "retired";
+
+export interface Asset {
+  id: string;
+  asset_tag?: string | null;
+  name: string;
+  category: AssetCategory;
+  serial?: string | null;
+  status: AssetStatus;
+  assigned_user_id?: string | null;
+  assigned_to_name?: string | null;
+  assigned_user_name?: string | null;
+  assigned_user_email?: string | null;
+  station_id?: string | null;
+  station_name?: string | null;
+  location?: string | null;
+  value_kes: number | string;
+  condition?: string | null;
+  date_assigned?: string | null;
+  purchase_date?: string | null;
+  notes?: string | null;
+  image_url?: string | null;
+  is_active: number | boolean;
+  created_by?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AssetSummary {
+  total: number;
+  in_use: number;
+  in_storage: number;
+  issues: number;
+  total_value: number;
+  by_category: { category: AssetCategory; count: number }[];
+}
+
+export interface AssignableStaff {
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole;
 }

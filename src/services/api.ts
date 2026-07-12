@@ -381,6 +381,17 @@ export const api = {
     getAll: () => apiGet<Record<string, string>>("/settings"),
     update: (values: Record<string, string | number>) => apiPut("/settings", values),
   },
+
+  assets: {
+    getAll: (params?: Record<string, string | number | undefined>) =>
+      apiGet(`/assets${buildQS(params)}`),
+    summary: () => apiGet("/assets/summary"),
+    assignableStaff: () => apiGet("/assets/assignable-staff"),
+    getById: (id: string) => apiGet(`/assets/${id}`),
+    create: (data: unknown) => apiPost("/assets", data),
+    update: (id: string, data: unknown) => apiPut(`/assets/${id}`, data),
+    remove: (id: string) => apiDelete(`/assets/${id}`),
+  },
 };
 
 export default api;
