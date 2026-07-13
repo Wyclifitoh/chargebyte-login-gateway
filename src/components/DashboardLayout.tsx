@@ -28,6 +28,11 @@ import {
   Settings2,
   BarChart3,
   Package,
+  Activity,
+  CalendarDays,
+  CheckSquare,
+  Building2,
+  MapPinned,
   LucideIcon,
 } from "lucide-react";
 import logo from "@/assets/chargebyte-logo.png";
@@ -40,8 +45,8 @@ type NavGroup = { id: string; label: string; icon: LucideIcon; items: NavLeaf[] 
 
 const NAV_GROUPS: NavGroup[] = [
   {
-    id: "operations",
-    label: "Operations",
+    id: "field_assets",
+    label: "Field & Assets",
     icon: Briefcase,
     items: [
       { id: "rentals", label: "Rentals", icon: Car, path: "/dashboard/rentals" },
@@ -51,6 +56,29 @@ const NAV_GROUPS: NavGroup[] = [
       { id: "operations", label: "Field Ops", icon: Briefcase, path: "/dashboard/operations" },
       { id: "support", label: "Support", icon: LifeBuoy, path: "/dashboard/support" },
       { id: "assets", label: "Asset Tracker", icon: Package, path: "/dashboard/assets" },
+    ],
+  },
+  {
+    id: "ops_group",
+    label: "Operations",
+    icon: Activity,
+    items: [
+      { id: "ops", label: "Dashboard", icon: LayoutDashboard, path: "/dashboard/ops" },
+      { id: "ops_updates", label: "Daily Updates", icon: FileText, path: "/dashboard/ops/updates" },
+      { id: "ops_field", label: "Field Activities", icon: MapPinned, path: "/dashboard/ops/field" },
+      {
+        id: "ops_departments",
+        label: "Department Updates",
+        icon: Building2,
+        path: "/dashboard/ops/departments",
+      },
+      { id: "ops_tasks", label: "Tasks", icon: CheckSquare, path: "/dashboard/ops/tasks" },
+      {
+        id: "ops_calendar",
+        label: "Calendar",
+        icon: CalendarDays,
+        path: "/dashboard/ops/calendar",
+      },
     ],
   },
   {

@@ -30,6 +30,12 @@ import SupportPage from "@/pages/dashboard/SupportPage";
 import PerformancePage from "@/pages/dashboard/PerformancePage";
 import SettingsPage from "@/pages/dashboard/SettingsPage";
 import AssetsPage from "@/pages/dashboard/AssetsPage";
+import OperationsDashboardPage from "@/pages/dashboard/operations/OperationsDashboardPage";
+import DailyUpdatesPage from "@/pages/dashboard/operations/DailyUpdatesPage";
+import FieldActivitiesPage from "@/pages/dashboard/operations/FieldActivitiesPage";
+import DepartmentUpdatesPage from "@/pages/dashboard/operations/DepartmentUpdatesPage";
+import OpsTasksPage from "@/pages/dashboard/operations/OpsTasksPage";
+import OpsCalendarPage from "@/pages/dashboard/operations/OpsCalendarPage";
 
 const queryClient = new QueryClient();
 
@@ -221,6 +227,54 @@ const App = () => (
               element={
                 <DashboardRoute section="assets">
                   <AssetsPage />
+                </DashboardRoute>
+              }
+            />
+            <Route
+              path="/dashboard/ops"
+              element={
+                <DashboardRoute section="ops">
+                  <OperationsDashboardPage />
+                </DashboardRoute>
+              }
+            />
+            <Route
+              path="/dashboard/ops/updates"
+              element={
+                <DashboardRoute section="ops_updates">
+                  <DailyUpdatesPage />
+                </DashboardRoute>
+              }
+            />
+            <Route
+              path="/dashboard/ops/field"
+              element={
+                <DashboardRoute section="ops_field">
+                  <FieldActivitiesPage />
+                </DashboardRoute>
+              }
+            />
+            <Route
+              path="/dashboard/ops/departments"
+              element={
+                <DashboardRoute section="ops_departments">
+                  <DepartmentUpdatesPage />
+                </DashboardRoute>
+              }
+            />
+            <Route
+              path="/dashboard/ops/tasks"
+              element={
+                <DashboardRoute section="ops_tasks">
+                  <OpsTasksPage />
+                </DashboardRoute>
+              }
+            />
+            <Route
+              path="/dashboard/ops/calendar"
+              element={
+                <DashboardRoute section="ops_calendar">
+                  <OpsCalendarPage />
                 </DashboardRoute>
               }
             />

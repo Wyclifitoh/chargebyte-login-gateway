@@ -392,6 +392,50 @@ export const api = {
     update: (id: string, data: unknown) => apiPut(`/assets/${id}`, data),
     remove: (id: string) => apiDelete(`/assets/${id}`),
   },
+
+  ops: {
+    staff: () => apiGet("/ops/staff"),
+    departments: () => apiGet<string[]>("/ops/departments"),
+    dashboard: () => apiGet("/ops/dashboard"),
+    dailyUpdates: {
+      list: (params?: Record<string, string | number | undefined>) =>
+        apiGet(`/ops/daily-updates${buildQS(params)}`),
+      create: (data: unknown) => apiPost("/ops/daily-updates", data),
+      update: (id: string, data: unknown) => apiPut(`/ops/daily-updates/${id}`, data),
+      remove: (id: string) => apiDelete(`/ops/daily-updates/${id}`),
+    },
+    fieldActivities: {
+      list: (params?: Record<string, string | number | undefined>) =>
+        apiGet(`/ops/field-activities${buildQS(params)}`),
+      create: (data: unknown) => apiPost("/ops/field-activities", data),
+      update: (id: string, data: unknown) => apiPut(`/ops/field-activities/${id}`, data),
+      remove: (id: string) => apiDelete(`/ops/field-activities/${id}`),
+    },
+    departmentUpdates: {
+      list: (params?: Record<string, string | number | undefined>) =>
+        apiGet(`/ops/department-updates${buildQS(params)}`),
+      create: (data: unknown) => apiPost("/ops/department-updates", data),
+      update: (id: string, data: unknown) => apiPut(`/ops/department-updates/${id}`, data),
+      remove: (id: string) => apiDelete(`/ops/department-updates/${id}`),
+    },
+    tasks: {
+      list: (params?: Record<string, string | number | undefined>) =>
+        apiGet(`/ops/tasks${buildQS(params)}`),
+      getById: (id: string) => apiGet(`/ops/tasks/${id}`),
+      create: (data: unknown) => apiPost("/ops/tasks", data),
+      update: (id: string, data: unknown) => apiPut(`/ops/tasks/${id}`, data),
+      remove: (id: string) => apiDelete(`/ops/tasks/${id}`),
+      addComment: (id: string, comment: string) =>
+        apiPost(`/ops/tasks/${id}/comments`, { comment }),
+    },
+    events: {
+      list: (params?: Record<string, string | number | undefined>) =>
+        apiGet(`/ops/events${buildQS(params)}`),
+      create: (data: unknown) => apiPost("/ops/events", data),
+      update: (id: string, data: unknown) => apiPut(`/ops/events/${id}`, data),
+      remove: (id: string) => apiDelete(`/ops/events/${id}`),
+    },
+  },
 };
 
 export default api;
