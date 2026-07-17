@@ -23,6 +23,7 @@ import AuditLogsPage from "@/pages/dashboard/AuditLogsPage";
 import OperationsPage from "@/pages/dashboard/OperationsPage";
 import NotificationsPage from "@/pages/dashboard/NotificationsPage";
 import PartnersPage from "@/pages/dashboard/PartnersPage";
+import PartnerProfilePage from "@/pages/dashboard/PartnerProfilePage";
 import AdClientsPage from "@/pages/dashboard/AdClientsPage";
 import ClockInPage from "@/pages/dashboard/ClockInPage";
 import ReportsPage from "@/pages/dashboard/ReportsPage";
@@ -131,6 +132,14 @@ const App = () => (
               element={
                 <DashboardRoute section="partners">
                   <PartnersPage />
+                </DashboardRoute>
+              }
+            />
+            <Route
+              path="/dashboard/partners/:id"
+              element={
+                <DashboardRoute section="partners">
+                  <PartnerProfilePage />
                 </DashboardRoute>
               }
             />

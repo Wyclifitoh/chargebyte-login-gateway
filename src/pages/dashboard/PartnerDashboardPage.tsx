@@ -1,152 +1,145 @@
-import { useState, useMemo } from "react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Skeleton } from "@/components/ui/skeleton";
+import { useEffect, useState } from "react";
+import { Building2, Cpu, MapPin, Wallet, TrendingUp } from "lucide-react";
+import { PageHeader, LoadingState, ErrorState } from "@/components/shared";
 import MetricCard from "@/components/MetricCard";
 import StatusBadge from "@/components/StatusBadge";
-import DataTable from "@/components/DataTable";
-import { PageHeader, FilterBar, TableSkeleton, EmptyState, ErrorState } from "@/components/shared";
-import { Cpu, Wallet, Battery } from "lucide-react";
-import { useMachines, useStations } from "@/hooks/useDashboardData";
+import { api } from "@/services/api";
 import { formatKsh } from "@/lib/format";
-import type { Machine, Station } from "@/types/dashboard";
 
-interface PartnerMachineRow extends Machine {
-  station: string;
-  revenue: number;
-  availableSlots: number;
-  lastMaintenance: string;
-  powerbankHealth: number;
-  totalSessions: number;
+interface DashData {
+  partner: { name: string; email: string; partner_code?: string; status?: string;
+    agreement_type?: string; revenue_share_percent?: number; fixed_amount?: number;
+    disbursement_frequency?: string; disbursement_day?: number };
+  stations: Array<{ id: string; station_id: string; station_name?: string; station_address?: string; assigned_at: string; unassigned_at?: string | null }>;
+  machines: Array<{ id: string; name: string; model: string; status: string; station_name?: string }>;
+  rentals: Array<{ id: string; rental_code: string; station_name?: string; total_amount: number; status: string; created_at: string }>;
+  disbursements: Array<{ id: string; period_start: string; period_end: string; amount_payable: number; status: string; station_name?: string; paid_at?: string | null }>;
+  revenue: { total_revenue: number; total_rentals: number; month_revenue: number; month_rentals: number };
+  pending_payouts: number;
+  paid_payouts: number;
 }
 
-const MetricSkeleton = () => (
-  <div className="rounded-xl border border-border bg-card shadow-sm p-5 space-y-3">
-    <Skeleton className="h-3 w-24" />
-    <Skeleton className="h-7 w-32" />
-    <Skeleton className="h-3 w-16" />
-  </div>
-);
-
 const PartnerDashboardPage = () => {
-  const machinesQ = useMachines();
-  const stationsQ = useStations();
-  const [locationFilter, setLocationFilter] = useState("all");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [data, setData] = useState<DashData | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const isLoading = machinesQ.isLoading || stationsQ.isLoading;
-  const isFallback = machinesQ.isFallback || stationsQ.isFallback;
-  const error = machinesQ.error && !machinesQ.isFallback ? machinesQ.error : null;
+  const load = async () => {
+    setError(null);
+    const res = await api.partners.myDashboard();
+    if (res.success) setData(res.data as DashData);
+    else setError(res.error || "Failed to load");
+  };
+  useEffect(() => { load(); }, []);
 
-  // Enrich machines with partner-specific derived fields (deterministic from id)
-  const enriched: PartnerMachineRow[] = useMemo(() => {
-    return machinesQ.data.map((m, idx) => {
-      const seed = (idx + 1) * 7;
-      return {
-        ...m,
-        station: m.station_name ?? "—",
-        revenue: ((seed * 1234) % 20000) + 2000,
-        availableSlots: m.available_slots,
-        lastMaintenance: m.last_maintenance ?? "—",
-        powerbankHealth: 60 + ((seed * 13) % 40),
-        totalSessions: ((seed * 97) % 2000) + 200,
-      };
-    });
-  }, [machinesQ.data]);
+  if (error) return <ErrorState title="Couldn't load dashboard" message={error} onRetry={load} />;
+  if (!data) return <LoadingState />;
 
-  const filtered = useMemo(() => {
-    let data = enriched;
-    if (locationFilter !== "all") data = data.filter((m) => m.station === locationFilter);
-    if (statusFilter !== "all") data = data.filter((m) => m.status === statusFilter);
-    return data;
-  }, [enriched, locationFilter, statusFilter]);
-
-  const totalRevenue = filtered.reduce((s, m) => s + m.revenue, 0);
-  const avgHealth = Math.round(filtered.reduce((s, m) => s + m.powerbankHealth, 0) / (filtered.length || 1));
-  const onlineCount = filtered.filter((m) => m.status === "online").length;
-
-  const columns = [
-    { key: "name" as const, label: "Machine" },
-    { key: "station" as const, label: "Location" },
-    { key: "status" as const, label: "Status", render: (v: unknown) => <StatusBadge status={String(v)} /> },
-    { key: "revenue" as const, label: "Revenue", render: (v: unknown) => <span>{formatKsh(Number(v))}</span> },
-    { key: "availableSlots" as const, label: "Avail. Slots" },
-    { key: "lastMaintenance" as const, label: "Last Maintenance" },
-    {
-      key: "powerbankHealth" as const,
-      label: "PB Health",
-      render: (v: unknown) => (
-        <div className="flex items-center gap-2">
-          <div className="w-16 h-2 rounded-full bg-muted overflow-hidden">
-            <div className="h-full rounded-full bg-primary" style={{ width: `${Number(v)}%` }} />
-          </div>
-          <span className="text-xs text-muted-foreground">{Number(v)}%</span>
-        </div>
-      ),
-    },
-    { key: "totalSessions" as const, label: "Sessions" },
-  ];
+  const currentStations = data.stations.filter((s) => !s.unassigned_at);
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Partner Dashboard" description="Monitor your machines and revenue" />
+      <PageHeader title={`Welcome, ${data.partner.name}`}
+        description={data.partner.agreement_type === "fixed_rent"
+          ? `Fixed payout ${formatKsh(Number(data.partner.fixed_amount || 0))} · ${data.partner.disbursement_frequency}`
+          : `${Number(data.partner.revenue_share_percent ?? 0)}% revenue share · ${data.partner.disbursement_frequency}`} />
 
-      {isFallback && !isLoading && (
-        <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/5 px-4 py-2 text-sm text-yellow-700 dark:text-yellow-400">
-          Showing demo data — backend unreachable.
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {isLoading ? (
-          <>
-            <MetricSkeleton /><MetricSkeleton /><MetricSkeleton /><MetricSkeleton />
-          </>
-        ) : (
-          <>
-            <MetricCard title="Total Machines" value={filtered.length} icon={<Cpu className="h-5 w-5" />} />
-            <MetricCard title="Online" value={onlineCount} change={Math.round((onlineCount / (filtered.length || 1)) * 100)} icon={<Cpu className="h-5 w-5" />} />
-            <MetricCard title="Total Revenue" value={formatKsh(totalRevenue)} icon={<Wallet className="h-5 w-5" />} />
-            <MetricCard title="Avg PB Health" value={`${avgHealth}%`} icon={<Battery className="h-5 w-5" />} />
-          </>
-        )}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        <MetricCard title="Total Revenue" value={formatKsh(data.revenue.total_revenue)} icon={<TrendingUp className="h-5 w-5" />} />
+        <MetricCard title="Total Rentals" value={data.revenue.total_rentals} icon={<Cpu className="h-5 w-5" />} />
+        <MetricCard title="This Month" value={formatKsh(data.revenue.month_revenue)} icon={<TrendingUp className="h-5 w-5" />} />
+        <MetricCard title="Pending Payouts" value={formatKsh(data.pending_payouts)} icon={<Wallet className="h-5 w-5" />} />
+        <MetricCard title="Paid Payouts" value={formatKsh(data.paid_payouts)} icon={<Wallet className="h-5 w-5" />} />
+        <MetricCard title="Stations" value={currentStations.length} icon={<MapPin className="h-5 w-5" />} />
       </div>
 
-      <FilterBar>
-        <div className="space-y-1">
-          <label className="text-xs font-medium text-muted-foreground">Location</label>
-          <Select value={locationFilter} onValueChange={setLocationFilter}>
-            <SelectTrigger className="w-[180px] h-9"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Locations</SelectItem>
-              {stationsQ.data.map((s: Station) => <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="rounded-xl border border-border bg-card">
+          <div className="p-4 border-b border-border font-semibold flex items-center gap-2">
+            <MapPin className="h-4 w-4" />Assigned Stations
+          </div>
+          <div className="divide-y divide-border">
+            {currentStations.length === 0 && <div className="p-4 text-sm text-muted-foreground">No stations assigned.</div>}
+            {currentStations.map((s) => (
+              <div key={s.id} className="p-4">
+                <p className="font-medium">{s.station_name}</p>
+                <p className="text-xs text-muted-foreground">{s.station_address}</p>
+              </div>
+            ))}
+          </div>
         </div>
-        <div className="space-y-1">
-          <label className="text-xs font-medium text-muted-foreground">Machine Status</label>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[180px] h-9"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Statuses</SelectItem>
-              <SelectItem value="online">Online</SelectItem>
-              <SelectItem value="offline">Offline</SelectItem>
-              <SelectItem value="maintenance">Maintenance</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </FilterBar>
 
-      {isLoading ? (
-        <TableSkeleton rows={6} columns={8} />
-      ) : error ? (
-        <ErrorState title="Couldn't load machines" message={error} onRetry={machinesQ.refetch} />
-      ) : filtered.length === 0 ? (
-        <div className="rounded-xl border border-border bg-card shadow-sm">
-          <EmptyState title="No machines match your filters" description="Try widening your filter selection." />
+        <div className="rounded-xl border border-border bg-card">
+          <div className="p-4 border-b border-border font-semibold flex items-center gap-2">
+            <Cpu className="h-4 w-4" />Machines
+          </div>
+          <div className="divide-y divide-border">
+            {data.machines.length === 0 && <div className="p-4 text-sm text-muted-foreground">No machines.</div>}
+            {data.machines.map((m) => (
+              <div key={m.id} className="p-4 flex items-center justify-between">
+                <div>
+                  <p className="font-medium">{m.name}</p>
+                  <p className="text-xs text-muted-foreground">{m.model} · {m.station_name}</p>
+                </div>
+                <StatusBadge status={m.status} />
+              </div>
+            ))}
+          </div>
         </div>
-      ) : (
-        <DataTable data={filtered} columns={columns} searchKey="name" searchPlaceholder="Search machines..." />
-      )}
+      </div>
+
+      <div className="rounded-xl border border-border bg-card overflow-x-auto">
+        <div className="p-4 border-b border-border font-semibold flex items-center gap-2">
+          <Wallet className="h-4 w-4" />Payment History
+        </div>
+        <table className="w-full text-sm">
+          <thead><tr className="border-b border-border">
+            <th className="px-4 py-3 text-left text-muted-foreground font-medium">Period</th>
+            <th className="px-4 py-3 text-left text-muted-foreground font-medium">Station</th>
+            <th className="px-4 py-3 text-left text-muted-foreground font-medium">Amount</th>
+            <th className="px-4 py-3 text-left text-muted-foreground font-medium">Status</th>
+            <th className="px-4 py-3 text-left text-muted-foreground font-medium">Paid on</th>
+          </tr></thead>
+          <tbody>
+            {data.disbursements.length === 0 && <tr><td colSpan={5} className="p-4 text-sm text-muted-foreground">No disbursements yet.</td></tr>}
+            {data.disbursements.map((d) => (
+              <tr key={d.id} className="border-b border-border last:border-0">
+                <td className="px-4 py-3 text-xs">{d.period_start} → {d.period_end}</td>
+                <td className="px-4 py-3">{d.station_name || "—"}</td>
+                <td className="px-4 py-3 font-semibold">{formatKsh(Number(d.amount_payable))}</td>
+                <td className="px-4 py-3"><StatusBadge status={d.status} /></td>
+                <td className="px-4 py-3 text-xs">{d.paid_at ? new Date(d.paid_at).toLocaleDateString() : "—"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="rounded-xl border border-border bg-card overflow-x-auto">
+        <div className="p-4 border-b border-border font-semibold flex items-center gap-2">
+          <Building2 className="h-4 w-4" />Recent Rentals
+        </div>
+        <table className="w-full text-sm">
+          <thead><tr className="border-b border-border">
+            <th className="px-4 py-3 text-left text-muted-foreground font-medium">Code</th>
+            <th className="px-4 py-3 text-left text-muted-foreground font-medium">Station</th>
+            <th className="px-4 py-3 text-left text-muted-foreground font-medium">Amount</th>
+            <th className="px-4 py-3 text-left text-muted-foreground font-medium">Status</th>
+            <th className="px-4 py-3 text-left text-muted-foreground font-medium">Date</th>
+          </tr></thead>
+          <tbody>
+            {data.rentals.length === 0 && <tr><td colSpan={5} className="p-4 text-sm text-muted-foreground">No rentals yet.</td></tr>}
+            {data.rentals.map((r) => (
+              <tr key={r.id} className="border-b border-border last:border-0">
+                <td className="px-4 py-3 font-mono text-xs">{r.rental_code}</td>
+                <td className="px-4 py-3">{r.station_name}</td>
+                <td className="px-4 py-3">{formatKsh(Number(r.total_amount))}</td>
+                <td className="px-4 py-3"><StatusBadge status={r.status} /></td>
+                <td className="px-4 py-3 text-xs">{new Date(r.created_at).toLocaleDateString()}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 };

@@ -225,15 +225,41 @@ export const api = {
 
   partners: {
     getAll: () => apiGet("/partners"),
+    list: (params?: Record<string, string | number | undefined>) =>
+      apiGet(`/partners${buildQS(params)}`),
+    summary: () => apiGet("/partners/summary"),
     getById: (id: string) => apiGet(`/partners/${id}`),
     create: (data: unknown) => apiPost("/partners", data),
     update: (id: string, data: unknown) => apiPut(`/partners/${id}`, data),
+    suspend: (id: string, is_active: boolean) =>
+      apiPatch(`/partners/${id}/suspend`, { is_active }),
+    resetPassword: (id: string) => apiPost(`/partners/${id}/reset-password`, {}),
+    // Contacts
+    addContact: (id: string, data: unknown) => apiPost(`/partners/${id}/contacts`, data),
+    removeContact: (id: string, contactId: string) =>
+      apiDelete(`/partners/${id}/contacts/${contactId}`),
+    // Payment accounts
+    addPaymentAccount: (id: string, data: unknown) =>
+      apiPost(`/partners/${id}/payment-accounts`, data),
+    removePaymentAccount: (id: string, accountId: string) =>
+      apiDelete(`/partners/${id}/payment-accounts/${accountId}`),
+    // Stations
+    assignStation: (id: string, data: { station_id: string; note?: string }) =>
+      apiPost(`/partners/${id}/assign-station`, data),
+    unassignStation: (id: string, station_id: string) =>
+      apiPost(`/partners/${id}/unassign-station`, { station_id }),
+    // Disbursements
+    disbursements: (params?: Record<string, string | number | undefined>) =>
+      apiGet(`/partners/disbursements${buildQS(params)}`),
+    generateDisbursement: (data: unknown) =>
+      apiPost(`/partners/disbursements/generate`, data),
+    updateDisbursement: (disbId: string, data: unknown) =>
+      apiPatch(`/partners/disbursements/${disbId}`, data),
+    // Rentals + self dashboard
+    getRentals: (id: string) => apiGet(`/partners/${id}/rentals`),
+    myDashboard: () => apiGet(`/partners/me/dashboard`),
+    // Legacy
     getPayouts: () => apiGet("/partners/payouts"),
-    assignStation: (data: unknown) => apiPost("/partners/assign-station", data),
-    unassignStation: (stationId: string) => apiDelete(`/partners/stations/${stationId}`),
-    assignMachine: (data: unknown) => apiPost("/partners/assign-machine", data),
-    unassignMachine: (partnerId: string, machineId: string) =>
-      apiDelete(`/partners/${partnerId}/machines/${machineId}`),
   },
 
   campaigns: {
