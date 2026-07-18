@@ -231,8 +231,7 @@ export const api = {
     getById: (id: string) => apiGet(`/partners/${id}`),
     create: (data: unknown) => apiPost("/partners", data),
     update: (id: string, data: unknown) => apiPut(`/partners/${id}`, data),
-    suspend: (id: string, is_active: boolean) =>
-      apiPatch(`/partners/${id}/suspend`, { is_active }),
+    suspend: (id: string, is_active: boolean) => apiPatch(`/partners/${id}/suspend`, { is_active }),
     resetPassword: (id: string) => apiPost(`/partners/${id}/reset-password`, {}),
     // Contacts
     addContact: (id: string, data: unknown) => apiPost(`/partners/${id}/contacts`, data),
@@ -248,11 +247,14 @@ export const api = {
       apiPost(`/partners/${id}/assign-station`, data),
     unassignStation: (id: string, station_id: string) =>
       apiPost(`/partners/${id}/unassign-station`, { station_id }),
+    // Machine deployments
+    deployMachine: (id: string, data: unknown) => apiPost(`/partners/${id}/deploy-machine`, data),
+    undeployMachine: (id: string, data: unknown) =>
+      apiPost(`/partners/${id}/undeploy-machine`, data),
     // Disbursements
     disbursements: (params?: Record<string, string | number | undefined>) =>
       apiGet(`/partners/disbursements${buildQS(params)}`),
-    generateDisbursement: (data: unknown) =>
-      apiPost(`/partners/disbursements/generate`, data),
+    generateDisbursement: (data: unknown) => apiPost(`/partners/disbursements/generate`, data),
     updateDisbursement: (disbId: string, data: unknown) =>
       apiPatch(`/partners/disbursements/${disbId}`, data),
     // Rentals + self dashboard
