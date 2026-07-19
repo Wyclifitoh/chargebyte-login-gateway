@@ -5,7 +5,6 @@ import {
   Plus,
   Trash2,
   Building2,
-  MapPin,
   User,
   CreditCard,
   FileText,
@@ -31,7 +30,7 @@ import {
 import StatusBadge from "@/components/StatusBadge";
 import { api } from "@/services/api";
 import { formatKsh } from "@/lib/format";
-import { useMachines, useStations } from "@/hooks/useDashboardData";
+import { useMachines } from "@/hooks/useDashboardData";
 
 interface ProfileData {
   partner: Record<string, unknown> & {
@@ -76,11 +75,10 @@ interface ProfileData {
     till_number?: string;
     is_default?: number;
   }>;
-  station_assignments: Array<{
+  station_assignments?: Array<{
     id: string;
     station_id: string;
     station_name?: string;
-    station_address?: string;
     assigned_at: string;
     unassigned_at?: string | null;
   }>;
@@ -91,11 +89,12 @@ interface ProfileData {
     name: string;
     model: string;
     status: string;
-    station_id: string;
+    station_id?: string | null;
     station_name?: string;
     deployed_at: string;
     undeployed_at?: string | null;
     deployment_status?: string;
+    note?: string | null;
   }>;
   disbursements: Array<{
     id: string;
@@ -126,7 +125,6 @@ const PartnerProfilePage = () => {
   const navigate = useNavigate();
   const [data, setData] = useState<ProfileData | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const stationsQ = useStations();
   const machinesQ = useMachines();
 
   const [contactOpen, setContactOpen] = useState(false);
@@ -149,11 +147,8 @@ const PartnerProfilePage = () => {
     till_number: "",
     is_default: true,
   });
-  const [assignOpen, setAssignOpen] = useState(false);
-  const [assignStationId, setAssignStationId] = useState("");
   const [deployOpen, setDeployOpen] = useState(false);
   const [deployForm, setDeployForm] = useState({
-    station_id: "",
     machine_id: "",
     deployed_at: new Date().toISOString().slice(0, 16),
     note: "",
@@ -190,10 +185,9 @@ const PartnerProfilePage = () => {
   if (!data) return <LoadingState />;
 
   const p = data.partner;
-  const currentStations = data.station_assignments.filter((a) => !a.unassigned_at);
-  const historicalStations = data.station_assignments.filter((a) => a.unassigned_at);
   const activeDeployments = data.machines.filter((m) => !m.undeployed_at);
   const deploymentHistory = data.machines.filter((m) => m.undeployed_at);
+  const deployedMachineIds = new Set(activeDeployments.map((m) => m.machine_id));
 
   const addContact = async () => {
     const res = await api.partners.addContact(id, contactForm);
@@ -226,31 +220,13 @@ const PartnerProfilePage = () => {
       load();
     } else toast.error(res.error || "Failed");
   };
-  const doAssign = async () => {
-    if (!assignStationId) return;
-    const res = await api.partners.assignStation(id, { station_id: assignStationId });
-    if (res.success) {
-      toast.success("Station assigned");
-      setAssignOpen(false);
-      setAssignStationId("");
-      load();
-    } else toast.error(res.error || "Failed");
-  };
-  const doUnassign = async (sid: string) => {
-    const res = await api.partners.unassignStation(id, sid);
-    if (res.success) {
-      toast.success("Unassigned");
-      load();
-    } else toast.error(res.error || "Failed");
-  };
   const deployMachine = async () => {
-    if (!deployForm.station_id || !deployForm.machine_id) return;
+    if (!deployForm.machine_id) return;
     const res = await api.partners.deployMachine(id, deployForm);
     if (res.success) {
       toast.success("Machine deployed");
       setDeployOpen(false);
       setDeployForm({
-        station_id: "",
         machine_id: "",
         deployed_at: new Date().toISOString().slice(0, 16),
         note: "",
@@ -267,14 +243,14 @@ const PartnerProfilePage = () => {
       if (rentals !== null) loadRentals();
     } else toast.error(res.error || "Failed");
   };
-  const genDisbursement = async (stationId: string) => {
+  const genDisbursement = async (machineId: string) => {
     const now = new Date();
     const start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     const end = new Date(now.getFullYear(), now.getMonth(), 0);
     const fmt = (d: Date) => d.toISOString().slice(0, 10);
     const res = await api.partners.generateDisbursement({
       partner_user_id: id,
-      station_id: stationId,
+      machine_id: machineId,
       period_start: fmt(start),
       period_end: fmt(end),
     });
@@ -337,11 +313,11 @@ const PartnerProfilePage = () => {
           <p className="text-xl font-bold">{data.rentals_month}</p>
         </div>
         <div className="rounded-xl border border-border bg-card p-4">
-          <p className="text-xs text-muted-foreground">Current Stations</p>
-          <p className="text-xl font-bold">{currentStations.length}</p>
+          <p className="text-xs text-muted-foreground">Active Deployments</p>
+          <p className="text-xl font-bold">{activeDeployments.length}</p>
         </div>
         <div className="rounded-xl border border-border bg-card p-4">
-          <p className="text-xs text-muted-foreground">Machines</p>
+          <p className="text-xs text-muted-foreground">Total Deployments</p>
           <p className="text-xl font-bold">{data.machines.length}</p>
         </div>
       </div>
@@ -361,11 +337,10 @@ const PartnerProfilePage = () => {
             <User className="h-3.5 w-3.5 mr-1" />
             Contacts
           </TabsTrigger>
-          <TabsTrigger value="stations">
-            <MapPin className="h-3.5 w-3.5 mr-1" />
-            Stations
+          <TabsTrigger value="machines">
+            <Cpu className="h-3.5 w-3.5 mr-1" />
+            Machines
           </TabsTrigger>
-          <TabsTrigger value="machines">Machines</TabsTrigger>
           <TabsTrigger value="payment">
             <CreditCard className="h-3.5 w-3.5 mr-1" />
             Payment Info
@@ -476,72 +451,9 @@ const PartnerProfilePage = () => {
           </div>
         </TabsContent>
 
-        <TabsContent value="stations" className="space-y-3">
-          <div className="flex justify-end">
-            <Button size="sm" onClick={() => setAssignOpen(true)}>
-              <Plus className="h-4 w-4 mr-1" />
-              Assign station
-            </Button>
-          </div>
-          <div className="rounded-xl border border-border bg-card">
-            <div className="p-3 text-xs font-medium text-muted-foreground uppercase">Current</div>
-            <div className="divide-y divide-border">
-              {currentStations.length === 0 && (
-                <div className="p-4 text-sm text-muted-foreground">No stations assigned.</div>
-              )}
-              {currentStations.map((a) => (
-                <div key={a.id} className="p-4 flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">{a.station_name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {a.station_address} · assigned {new Date(a.assigned_at).toLocaleDateString()}
-                    </p>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => genDisbursement(a.station_id)}
-                    >
-                      Generate voucher
-                    </Button>
-                    <Button size="sm" variant="ghost" onClick={() => doUnassign(a.station_id)}>
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-            {historicalStations.length > 0 && (
-              <>
-                <div className="p-3 text-xs font-medium text-muted-foreground uppercase border-t border-border">
-                  History
-                </div>
-                <div className="divide-y divide-border">
-                  {historicalStations.map((a) => (
-                    <div key={a.id} className="p-4 text-sm">
-                      <p className="font-medium">{a.station_name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {new Date(a.assigned_at).toLocaleDateString()} →{" "}
-                        {a.unassigned_at
-                          ? new Date(a.unassigned_at).toLocaleDateString()
-                          : "present"}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
-        </TabsContent>
-
         <TabsContent value="machines">
           <div className="flex justify-end mb-3">
-            <Button
-              size="sm"
-              onClick={() => setDeployOpen(true)}
-              disabled={currentStations.length === 0}
-            >
+            <Button size="sm" onClick={() => setDeployOpen(true)}>
               <Plus className="h-4 w-4 mr-1" />
               Deploy machine
             </Button>
@@ -552,11 +464,13 @@ const PartnerProfilePage = () => {
                 <tr className="border-b border-border">
                   <th className="px-4 py-3 text-left text-muted-foreground font-medium">Machine</th>
                   <th className="px-4 py-3 text-left text-muted-foreground font-medium">Model</th>
-                  <th className="px-4 py-3 text-left text-muted-foreground font-medium">Station</th>
                   <th className="px-4 py-3 text-left text-muted-foreground font-medium">
                     Deployed
                   </th>
-                  <th className="px-4 py-3 text-left text-muted-foreground font-medium">Status</th>
+                  <th className="px-4 py-3 text-left text-muted-foreground font-medium">
+                    Machine status
+                  </th>
+                  <th className="px-4 py-3 text-left text-muted-foreground font-medium">Note</th>
                   <th className="px-4 py-3 text-right text-muted-foreground font-medium">
                     Actions
                   </th>
@@ -575,22 +489,31 @@ const PartnerProfilePage = () => {
                   <tr key={m.deployment_id} className="border-b border-border last:border-0">
                     <td className="px-4 py-3">{m.name}</td>
                     <td className="px-4 py-3">{m.model}</td>
-                    <td className="px-4 py-3">{m.station_name}</td>
                     <td className="px-4 py-3 text-xs">
                       {new Date(m.deployed_at).toLocaleString()}
                     </td>
                     <td className="px-4 py-3">
                       <StatusBadge status={m.status} />
                     </td>
+                    <td className="px-4 py-3 text-xs text-muted-foreground">{m.note || "—"}</td>
                     <td className="px-4 py-3 text-right">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => undeployMachine(m.deployment_id)}
-                      >
-                        <PowerOff className="h-3.5 w-3.5 mr-1" />
-                        Undeploy
-                      </Button>
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => genDisbursement(m.machine_id)}
+                        >
+                          Generate voucher
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => undeployMachine(m.deployment_id)}
+                        >
+                          <PowerOff className="h-3.5 w-3.5 mr-1" />
+                          Undeploy
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -607,7 +530,6 @@ const PartnerProfilePage = () => {
                   {deploymentHistory.map((m) => (
                     <tr key={m.deployment_id} className="border-t border-border">
                       <td className="px-4 py-3">{m.name}</td>
-                      <td className="px-4 py-3">{m.station_name}</td>
                       <td className="px-4 py-3 text-xs">
                         {new Date(m.deployed_at).toLocaleDateString()} →{" "}
                         {m.undeployed_at
@@ -916,30 +838,6 @@ const PartnerProfilePage = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Assign station */}
-      <Dialog open={assignOpen} onOpenChange={setAssignOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Assign station</DialogTitle>
-          </DialogHeader>
-          <Select value={assignStationId} onValueChange={setAssignStationId}>
-            <SelectTrigger>
-              <SelectValue placeholder="Pick a station" />
-            </SelectTrigger>
-            <SelectContent>
-              {stationsQ.data.map((s) => (
-                <SelectItem key={s.id} value={s.id}>
-                  {s.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Button className="w-full mt-2" onClick={doAssign} disabled={!assignStationId}>
-            Assign
-          </Button>
-        </DialogContent>
-      </Dialog>
-
       {/* Deploy machine */}
       <Dialog open={deployOpen} onOpenChange={setDeployOpen}>
         <DialogContent className="max-w-md">
@@ -948,21 +846,6 @@ const PartnerProfilePage = () => {
           </DialogHeader>
           <div className="space-y-3">
             <Select
-              value={deployForm.station_id}
-              onValueChange={(v) => setDeployForm({ ...deployForm, station_id: v })}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Partner station" />
-              </SelectTrigger>
-              <SelectContent>
-                {currentStations.map((s) => (
-                  <SelectItem key={s.station_id} value={s.station_id}>
-                    {s.station_name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select
               value={deployForm.machine_id}
               onValueChange={(v) => setDeployForm({ ...deployForm, machine_id: v })}
             >
@@ -970,11 +853,14 @@ const PartnerProfilePage = () => {
                 <SelectValue placeholder="Machine" />
               </SelectTrigger>
               <SelectContent>
-                {machinesQ.data.map((m) => (
-                  <SelectItem key={m.id} value={m.id}>
-                    {m.name} · {m.station_name || "Unassigned"}
-                  </SelectItem>
-                ))}
+                {machinesQ.data
+                  .filter((m) => !deployedMachineIds.has(m.id))
+                  .map((m) => (
+                    <SelectItem key={m.id} value={m.id}>
+                      {m.name}
+                      {m.station_name ? ` · ${m.station_name}` : ""}
+                    </SelectItem>
+                  ))}
               </SelectContent>
             </Select>
             <div className="space-y-1">
@@ -986,15 +872,11 @@ const PartnerProfilePage = () => {
               />
             </div>
             <Input
-              placeholder="Note"
+              placeholder="Note (optional)"
               value={deployForm.note}
               onChange={(e) => setDeployForm({ ...deployForm, note: e.target.value })}
             />
-            <Button
-              className="w-full"
-              onClick={deployMachine}
-              disabled={!deployForm.station_id || !deployForm.machine_id}
-            >
+            <Button className="w-full" onClick={deployMachine} disabled={!deployForm.machine_id}>
               <Cpu className="h-4 w-4 mr-1" />
               Deploy
             </Button>

@@ -70,6 +70,7 @@ export const ROLE_NAV_ACCESS: Record<UserRole, string[]> = {
     "ops_departments",
     "ops_tasks",
     "ops_calendar",
+    "events",
   ],
   admin: [
     "overview",
@@ -92,6 +93,7 @@ export const ROLE_NAV_ACCESS: Record<UserRole, string[]> = {
     "ops_departments",
     "ops_tasks",
     "ops_calendar",
+    "events",
   ],
   staff: [
     "overview",
@@ -106,6 +108,7 @@ export const ROLE_NAV_ACCESS: Record<UserRole, string[]> = {
     "ops_departments",
     "ops_tasks",
     "ops_calendar",
+    "events",
   ],
   location_partner: ["overview", "partner", "revenue", "notifications"],
   funding_partner: ["overview", "partner", "revenue", "notifications"],

@@ -300,9 +300,18 @@ export const api = {
   events: {
     getAll: (params?: Record<string, string | number | undefined>) =>
       apiGet(`/events${buildQS(params)}`),
+    summary: () => apiGet("/events/summary"),
     getById: (id: string) => apiGet(`/events/${id}`),
     create: (data: unknown) => apiPost("/events", data),
     update: (id: string, data: unknown) => apiPut(`/events/${id}`, data),
+    delete: (id: string) => apiDelete(`/events/${id}`),
+    logCommunication: (id: string, data: { channel: string; note?: string }) =>
+      apiPost(`/events/${id}/log-communication`, data),
+    assignStaff: (id: string, data: unknown) => apiPost(`/events/${id}/staff`, data),
+    removeStaff: (id: string, staff_row_id: string) => apiDelete(`/events/${id}/staff/${staff_row_id}`),
+    deployMachine: (id: string, data: unknown) => apiPost(`/events/${id}/deploy-machine`, data),
+    returnMachine: (id: string, deployment_id: string) =>
+      apiPost(`/events/${id}/machines/${deployment_id}/return`, {}),
   },
 
   activations: {

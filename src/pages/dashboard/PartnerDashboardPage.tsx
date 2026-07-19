@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Building2, Cpu, MapPin, Wallet, TrendingUp } from "lucide-react";
+import { Building2, Cpu, Wallet, TrendingUp } from "lucide-react";
 import { PageHeader, LoadingState, ErrorState } from "@/components/shared";
 import MetricCard from "@/components/MetricCard";
 import StatusBadge from "@/components/StatusBadge";
@@ -10,8 +10,8 @@ interface DashData {
   partner: { name: string; email: string; partner_code?: string; status?: string;
     agreement_type?: string; revenue_share_percent?: number; fixed_amount?: number;
     disbursement_frequency?: string; disbursement_day?: number };
-  stations: Array<{ id: string; station_id: string; station_name?: string; station_address?: string; assigned_at: string; unassigned_at?: string | null }>;
-  machines: Array<{ id: string; name: string; model: string; status: string; station_name?: string }>;
+  stations?: Array<{ id: string; station_id: string; station_name?: string; station_address?: string; assigned_at: string; unassigned_at?: string | null }>;
+  machines: Array<{ deployment_id?: string; id: string; name: string; model: string; status: string; station_name?: string; deployed_at?: string }>;
   rentals: Array<{ id: string; rental_code: string; station_name?: string; total_amount: number; status: string; created_at: string }>;
   disbursements: Array<{ id: string; period_start: string; period_end: string; amount_payable: number; status: string; station_name?: string; paid_at?: string | null }>;
   revenue: { total_revenue: number; total_rentals: number; month_revenue: number; month_rentals: number };
@@ -34,8 +34,6 @@ const PartnerDashboardPage = () => {
   if (error) return <ErrorState title="Couldn't load dashboard" message={error} onRetry={load} />;
   if (!data) return <LoadingState />;
 
-  const currentStations = data.stations.filter((s) => !s.unassigned_at);
-
   return (
     <div className="space-y-6">
       <PageHeader title={`Welcome, ${data.partner.name}`}
@@ -49,36 +47,21 @@ const PartnerDashboardPage = () => {
         <MetricCard title="This Month" value={formatKsh(data.revenue.month_revenue)} icon={<TrendingUp className="h-5 w-5" />} />
         <MetricCard title="Pending Payouts" value={formatKsh(data.pending_payouts)} icon={<Wallet className="h-5 w-5" />} />
         <MetricCard title="Paid Payouts" value={formatKsh(data.paid_payouts)} icon={<Wallet className="h-5 w-5" />} />
-        <MetricCard title="Stations" value={currentStations.length} icon={<MapPin className="h-5 w-5" />} />
+        <MetricCard title="Deployed Machines" value={data.machines.length} icon={<Cpu className="h-5 w-5" />} />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4">
         <div className="rounded-xl border border-border bg-card">
           <div className="p-4 border-b border-border font-semibold flex items-center gap-2">
-            <MapPin className="h-4 w-4" />Assigned Stations
+            <Cpu className="h-4 w-4" />Deployed Machines
           </div>
           <div className="divide-y divide-border">
-            {currentStations.length === 0 && <div className="p-4 text-sm text-muted-foreground">No stations assigned.</div>}
-            {currentStations.map((s) => (
-              <div key={s.id} className="p-4">
-                <p className="font-medium">{s.station_name}</p>
-                <p className="text-xs text-muted-foreground">{s.station_address}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="rounded-xl border border-border bg-card">
-          <div className="p-4 border-b border-border font-semibold flex items-center gap-2">
-            <Cpu className="h-4 w-4" />Machines
-          </div>
-          <div className="divide-y divide-border">
-            {data.machines.length === 0 && <div className="p-4 text-sm text-muted-foreground">No machines.</div>}
+            {data.machines.length === 0 && <div className="p-4 text-sm text-muted-foreground">No machines deployed to you yet.</div>}
             {data.machines.map((m) => (
-              <div key={m.id} className="p-4 flex items-center justify-between">
+              <div key={m.deployment_id || m.id} className="p-4 flex items-center justify-between">
                 <div>
                   <p className="font-medium">{m.name}</p>
-                  <p className="text-xs text-muted-foreground">{m.model} · {m.station_name}</p>
+                  <p className="text-xs text-muted-foreground">{m.model}{m.station_name ? ` · ${m.station_name}` : ""}{m.deployed_at ? ` · deployed ${new Date(m.deployed_at).toLocaleDateString()}` : ""}</p>
                 </div>
                 <StatusBadge status={m.status} />
               </div>

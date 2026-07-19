@@ -73,6 +73,7 @@ const NAV_GROUPS: NavGroup[] = [
         path: "/dashboard/ops/departments",
       },
       { id: "ops_tasks", label: "Tasks", icon: CheckSquare, path: "/dashboard/ops/tasks" },
+      { id: "events", label: "Events", icon: CalendarDays, path: "/dashboard/events" },
       {
         id: "ops_calendar",
         label: "Calendar",

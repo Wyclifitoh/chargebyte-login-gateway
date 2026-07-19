@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Search, MoreVertical, Building2, TrendingUp, Clock, CheckCircle2, MapPin } from "lucide-react";
+import { Plus, Search, MoreVertical, Building2, TrendingUp, Clock, CheckCircle2, Cpu } from "lucide-react";
 import { toast } from "sonner";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -22,7 +22,6 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { useStations } from "@/hooks/useDashboardData";
 import { api } from "@/services/api";
 import { formatKsh } from "@/lib/format";
 
@@ -53,7 +52,7 @@ interface AdminSummary {
   pending_disbursements: number;
   paid_this_month: number;
   revenue_shared_month: number;
-  unassigned_stations: number;
+  active_deployments: number;
 }
 
 const createSchema = z.object({
@@ -85,8 +84,6 @@ const createSchema = z.object({
   fixed_amount: z.coerce.number().min(0).optional(),
   disbursement_frequency: z.enum(["monthly", "quarterly", "yearly"]),
   disbursement_day: z.coerce.number().min(1).max(28),
-  // station
-  station_id: z.string().optional().or(z.literal("")),
   // login
   password: z.string().optional().or(z.literal("")),
 });
@@ -94,7 +91,6 @@ type CreateValues = z.infer<typeof createSchema>;
 
 const PartnersPage = () => {
   const navigate = useNavigate();
-  const stationsQ = useStations();
   const [partners, setPartners] = useState<PartnerRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [summary, setSummary] = useState<AdminSummary | null>(null);
@@ -103,8 +99,6 @@ const PartnersPage = () => {
   const [createOpen, setCreateOpen] = useState(false);
   const [step, setStep] = useState(0);
   const [tempPassword, setTempPassword] = useState<string | null>(null);
-  const [assignFor, setAssignFor] = useState<PartnerRow | null>(null);
-  const [assignStationId, setAssignStationId] = useState("");
   const [suspending, setSuspending] = useState<PartnerRow | null>(null);
   const [resetting, setResetting] = useState<PartnerRow | null>(null);
 
@@ -117,7 +111,7 @@ const PartnersPage = () => {
       pay_method: "mpesa", agreement_type: "revenue_share",
       revenue_share_percent: 10, fixed_amount: 0,
       disbursement_frequency: "monthly", disbursement_day: 5,
-      station_id: "", password: "",
+      password: "",
     },
   });
 
@@ -148,7 +142,6 @@ const PartnersPage = () => {
       fixed_amount: data.fixed_amount,
       disbursement_frequency: data.disbursement_frequency,
       disbursement_day: data.disbursement_day,
-      station_id: data.station_id || undefined,
       password: data.password || undefined,
     };
     const res = await api.partners.create(payload);
@@ -162,12 +155,6 @@ const PartnersPage = () => {
     } else toast.error(res.error || "Failed to create");
   };
 
-  const onAssign = async () => {
-    if (!assignFor || !assignStationId) return;
-    const res = await api.partners.assignStation(assignFor.id, { station_id: assignStationId });
-    if (res.success) { toast.success("Station assigned"); load(); setAssignFor(null); setAssignStationId(""); }
-    else toast.error(res.error || "Failed");
-  };
   const onSuspend = async () => {
     if (!suspending) return;
     const res = await api.partners.suspend(suspending.id, !suspending.is_active);
@@ -187,7 +174,7 @@ const PartnersPage = () => {
   };
 
   const rows = partners || [];
-  const stepLabels = ["Company", "Contact", "Payment", "Agreement", "Station"];
+  const stepLabels = ["Company", "Contact", "Payment", "Agreement", "Login"];
   const payMethod = form.watch("pay_method");
   const agreementType = form.watch("agreement_type");
 
@@ -206,7 +193,7 @@ const PartnersPage = () => {
         <MetricCard title="Pending Payouts" value={summary?.pending_disbursements ?? 0} icon={<Clock className="h-5 w-5" />} />
         <MetricCard title="Paid This Month" value={formatKsh(Number(summary?.paid_this_month || 0))} icon={<TrendingUp className="h-5 w-5" />} />
         <MetricCard title="Revenue Shared" value={formatKsh(Number(summary?.revenue_shared_month || 0))} icon={<TrendingUp className="h-5 w-5" />} />
-        <MetricCard title="Unassigned Stations" value={summary?.unassigned_stations ?? 0} icon={<MapPin className="h-5 w-5" />} />
+        <MetricCard title="Active Deployments" value={summary?.active_deployments ?? 0} icon={<Cpu className="h-5 w-5" />} />
       </div>
 
       <div className="flex flex-wrap gap-3 items-center">
@@ -245,7 +232,7 @@ const PartnersPage = () => {
               <th className="px-4 py-3 text-left font-medium text-muted-foreground">Code</th>
               <th className="px-4 py-3 text-left font-medium text-muted-foreground">Agreement</th>
               <th className="px-4 py-3 text-left font-medium text-muted-foreground">Frequency</th>
-              <th className="px-4 py-3 text-left font-medium text-muted-foreground">Stations</th>
+              <th className="px-4 py-3 text-left font-medium text-muted-foreground">Machines</th>
               <th className="px-4 py-3 text-left font-medium text-muted-foreground">Pending</th>
               <th className="px-4 py-3 text-left font-medium text-muted-foreground">Status</th>
               <th className="px-4 py-3 text-right font-medium text-muted-foreground">Actions</th>
@@ -277,7 +264,7 @@ const PartnersPage = () => {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem onClick={() => navigate(`/dashboard/partners/${p.id}`)}>View partner</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => { setAssignFor(p); setAssignStationId(""); }}>Assign station</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => navigate(`/dashboard/partners/${p.id}`)}>Deploy machine</DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem onClick={() => setResetting(p)}>Reset password</DropdownMenuItem>
                         <DropdownMenuItem onClick={() => setSuspending(p)}>
@@ -464,18 +451,7 @@ const PartnersPage = () => {
 
                   {step === 4 && (
                     <div className="space-y-3">
-                      <FormField control={form.control} name="station_id" render={({ field }) => (
-                        <FormItem><FormLabel>Assign Station (optional)</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value || undefined}>
-                            <FormControl><SelectTrigger><SelectValue placeholder="No station yet" /></SelectTrigger></FormControl>
-                            <SelectContent>
-                              {stationsQ.data.map((s) => (
-                                <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select><FormMessage />
-                        </FormItem>
-                      )} />
+                      <p className="text-xs text-muted-foreground">Machines are deployed to this partner from the partner profile after creation.</p>
                       <FormField control={form.control} name="password" render={({ field }) => (
                         <FormItem><FormLabel>Login Password (leave blank to auto-generate)</FormLabel>
                           <FormControl><Input type="text" {...field} placeholder="Auto-generate" /></FormControl>
@@ -509,20 +485,6 @@ const PartnersPage = () => {
               </Form>
             </>
           )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Assign station dialog */}
-      <Dialog open={!!assignFor} onOpenChange={(o) => !o && setAssignFor(null)}>
-        <DialogContent className="max-w-md">
-          <DialogHeader><DialogTitle>Assign station to {assignFor?.name}</DialogTitle></DialogHeader>
-          <Select value={assignStationId} onValueChange={setAssignStationId}>
-            <SelectTrigger><SelectValue placeholder="Pick a station" /></SelectTrigger>
-            <SelectContent>
-              {stationsQ.data.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Button className="w-full mt-2" onClick={onAssign} disabled={!assignStationId}>Assign</Button>
         </DialogContent>
       </Dialog>
 
