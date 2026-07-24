@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Plus, CalendarDays } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader, LoadingState, ErrorState, EmptyState } from "@/components/shared";
@@ -26,6 +27,7 @@ const STATUSES = [
 ];
 
 const EventsPage = () => {
+  const navigate = useNavigate();
   const [events, setEvents] = useState<EventRow[] | null>(null);
   const [summary, setSummary] = useState<Record<string, number> | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -139,6 +141,7 @@ const EventsPage = () => {
                       <Button size="sm" variant="ghost" onClick={() => logComm(e.id, "contacted")}>Contact</Button>
                       <Button size="sm" variant="ghost" onClick={() => logComm(e.id, "email")}>Email</Button>
                       <Button size="sm" variant="ghost" onClick={() => logComm(e.id, "proposal")}>Proposal</Button>
+                      <Button size="sm" variant="outline" onClick={() => navigate(`/dashboard/events/${e.id}`)}>View</Button>
                       <Select value={e.status} onValueChange={(v) => setStatus(e.id, v)}>
                         <SelectTrigger className="h-8 w-[130px] text-xs"><SelectValue /></SelectTrigger>
                         <SelectContent>

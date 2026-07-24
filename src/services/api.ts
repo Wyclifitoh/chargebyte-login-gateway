@@ -312,6 +312,7 @@ export const api = {
     deployMachine: (id: string, data: unknown) => apiPost(`/events/${id}/deploy-machine`, data),
     returnMachine: (id: string, deployment_id: string) =>
       apiPost(`/events/${id}/machines/${deployment_id}/return`, {}),
+    performance: (id: string) => apiGet(`/events/${id}/performance`),
   },
 
   activations: {

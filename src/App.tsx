@@ -32,6 +32,7 @@ import PerformancePage from "@/pages/dashboard/PerformancePage";
 import SettingsPage from "@/pages/dashboard/SettingsPage";
 import AssetsPage from "@/pages/dashboard/AssetsPage";
 import EventsPage from "@/pages/dashboard/EventsPage";
+import EventProfilePage from "@/pages/dashboard/EventProfilePage";
 import OperationsDashboardPage from "@/pages/dashboard/operations/OperationsDashboardPage";
 import DailyUpdatesPage from "@/pages/dashboard/operations/DailyUpdatesPage";
 import FieldActivitiesPage from "@/pages/dashboard/operations/FieldActivitiesPage";
@@ -245,6 +246,14 @@ const App = () => (
               element={
                 <DashboardRoute section="events">
                   <EventsPage />
+                </DashboardRoute>
+              }
+            />
+            <Route
+              path="/dashboard/events/:id"
+              element={
+                <DashboardRoute section="events">
+                  <EventProfilePage />
                 </DashboardRoute>
               }
             />

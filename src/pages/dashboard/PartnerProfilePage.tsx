@@ -99,6 +99,7 @@ interface ProfileData {
   disbursements: Array<{
     id: string;
     station_name?: string;
+    machine_name?: string;
     period_start: string;
     period_end: string;
     gross_revenue: number;
@@ -243,10 +244,11 @@ const PartnerProfilePage = () => {
       if (rentals !== null) loadRentals();
     } else toast.error(res.error || "Failed");
   };
-  const genDisbursement = async (machineId: string) => {
+  const genDisbursement = async (machineId: string, deployedAt: string) => {
     const now = new Date();
-    const start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const end = new Date(now.getFullYear(), now.getMonth(), 0);
+    const deployedDate = new Date(deployedAt);
+    const start = Number.isNaN(deployedDate.getTime()) ? now : deployedDate;
+    const end = now;
     const fmt = (d: Date) => d.toISOString().slice(0, 10);
     const res = await api.partners.generateDisbursement({
       partner_user_id: id,
@@ -501,7 +503,7 @@ const PartnerProfilePage = () => {
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => genDisbursement(m.machine_id)}
+                          onClick={() => genDisbursement(m.machine_id, m.deployed_at)}
                         >
                           Generate voucher
                         </Button>
@@ -591,7 +593,7 @@ const PartnerProfilePage = () => {
               <thead>
                 <tr className="border-b border-border">
                   <th className="px-4 py-3 text-left text-muted-foreground font-medium">Code</th>
-                  <th className="px-4 py-3 text-left text-muted-foreground font-medium">Station</th>
+                  <th className="px-4 py-3 text-left text-muted-foreground font-medium">Machine</th>
                   <th className="px-4 py-3 text-left text-muted-foreground font-medium">Machine</th>
                   <th className="px-4 py-3 text-left text-muted-foreground font-medium">Amount</th>
                   <th className="px-4 py-3 text-left text-muted-foreground font-medium">Status</th>
@@ -661,7 +663,7 @@ const PartnerProfilePage = () => {
                     <td className="px-4 py-3 text-xs">
                       {d.period_start} → {d.period_end}
                     </td>
-                    <td className="px-4 py-3">{d.station_name || "—"}</td>
+                    <td className="px-4 py-3">{d.machine_name || d.station_name || "—"}</td>
                     <td className="px-4 py-3">{formatKsh(Number(d.gross_revenue))}</td>
                     <td className="px-4 py-3 font-semibold">
                       {formatKsh(Number(d.amount_payable))}
