@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Building2, Cpu, Wallet, TrendingUp } from "lucide-react";
+import { Cpu, Wallet, TrendingUp } from "lucide-react";
 import { PageHeader, LoadingState, ErrorState } from "@/components/shared";
 import MetricCard from "@/components/MetricCard";
 import StatusBadge from "@/components/StatusBadge";
@@ -11,9 +11,9 @@ interface DashData {
     agreement_type?: string; revenue_share_percent?: number; fixed_amount?: number;
     disbursement_frequency?: string; disbursement_day?: number };
   stations?: Array<{ id: string; station_id: string; station_name?: string; station_address?: string; assigned_at: string; unassigned_at?: string | null }>;
-  machines: Array<{ deployment_id?: string; id: string; name: string; model: string; status: string; station_name?: string; deployed_at?: string }>;
-  rentals: Array<{ id: string; rental_code: string; station_name?: string; total_amount: number; status: string; created_at: string }>;
-  disbursements: Array<{ id: string; period_start: string; period_end: string; amount_payable: number; status: string; station_name?: string; paid_at?: string | null }>;
+  machines: Array<{ deployment_id?: string; id: string; name: string; model: string; status: string; deployed_at?: string }>;
+  rentals: Array<{ id: string; rental_code: string; machine_name?: string; total_amount: number; status: string; created_at: string }>;
+  disbursements: Array<{ id: string; period_start: string; period_end: string; amount_payable: number; status: string; machine_name?: string; paid_at?: string | null }>;
   revenue: { total_revenue: number; total_rentals: number; month_revenue: number; month_rentals: number };
   pending_payouts: number;
   paid_payouts: number;
@@ -61,7 +61,7 @@ const PartnerDashboardPage = () => {
               <div key={m.deployment_id || m.id} className="p-4 flex items-center justify-between">
                 <div>
                   <p className="font-medium">{m.name}</p>
-                  <p className="text-xs text-muted-foreground">{m.model}{m.station_name ? ` · ${m.station_name}` : ""}{m.deployed_at ? ` · deployed ${new Date(m.deployed_at).toLocaleDateString()}` : ""}</p>
+                  <p className="text-xs text-muted-foreground">{m.model}{m.deployed_at ? ` · deployed ${new Date(m.deployed_at).toLocaleDateString()}` : ""}</p>
                 </div>
                 <StatusBadge status={m.status} />
               </div>
@@ -77,7 +77,7 @@ const PartnerDashboardPage = () => {
         <table className="w-full text-sm">
           <thead><tr className="border-b border-border">
             <th className="px-4 py-3 text-left text-muted-foreground font-medium">Period</th>
-            <th className="px-4 py-3 text-left text-muted-foreground font-medium">Station</th>
+            <th className="px-4 py-3 text-left text-muted-foreground font-medium">Machine</th>
             <th className="px-4 py-3 text-left text-muted-foreground font-medium">Amount</th>
             <th className="px-4 py-3 text-left text-muted-foreground font-medium">Status</th>
             <th className="px-4 py-3 text-left text-muted-foreground font-medium">Paid on</th>
@@ -87,7 +87,7 @@ const PartnerDashboardPage = () => {
             {data.disbursements.map((d) => (
               <tr key={d.id} className="border-b border-border last:border-0">
                 <td className="px-4 py-3 text-xs">{d.period_start} → {d.period_end}</td>
-                <td className="px-4 py-3">{d.station_name || "—"}</td>
+                <td className="px-4 py-3">{d.machine_name || "—"}</td>
                 <td className="px-4 py-3 font-semibold">{formatKsh(Number(d.amount_payable))}</td>
                 <td className="px-4 py-3"><StatusBadge status={d.status} /></td>
                 <td className="px-4 py-3 text-xs">{d.paid_at ? new Date(d.paid_at).toLocaleDateString() : "—"}</td>
@@ -99,12 +99,12 @@ const PartnerDashboardPage = () => {
 
       <div className="rounded-xl border border-border bg-card overflow-x-auto">
         <div className="p-4 border-b border-border font-semibold flex items-center gap-2">
-          <Building2 className="h-4 w-4" />Recent Rentals
+          <Cpu className="h-4 w-4" />Recent Rentals
         </div>
         <table className="w-full text-sm">
           <thead><tr className="border-b border-border">
             <th className="px-4 py-3 text-left text-muted-foreground font-medium">Code</th>
-            <th className="px-4 py-3 text-left text-muted-foreground font-medium">Station</th>
+            <th className="px-4 py-3 text-left text-muted-foreground font-medium">Machine</th>
             <th className="px-4 py-3 text-left text-muted-foreground font-medium">Amount</th>
             <th className="px-4 py-3 text-left text-muted-foreground font-medium">Status</th>
             <th className="px-4 py-3 text-left text-muted-foreground font-medium">Date</th>
@@ -114,7 +114,7 @@ const PartnerDashboardPage = () => {
             {data.rentals.map((r) => (
               <tr key={r.id} className="border-b border-border last:border-0">
                 <td className="px-4 py-3 font-mono text-xs">{r.rental_code}</td>
-                <td className="px-4 py-3">{r.station_name}</td>
+                <td className="px-4 py-3">{r.machine_name || "—"}</td>
                 <td className="px-4 py-3">{formatKsh(Number(r.total_amount))}</td>
                 <td className="px-4 py-3"><StatusBadge status={r.status} /></td>
                 <td className="px-4 py-3 text-xs">{new Date(r.created_at).toLocaleDateString()}</td>

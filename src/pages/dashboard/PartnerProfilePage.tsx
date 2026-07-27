@@ -5,6 +5,7 @@ import {
   Plus,
   Trash2,
   Building2,
+  Pencil,
   User,
   CreditCard,
   FileText,
@@ -149,6 +150,24 @@ const PartnerProfilePage = () => {
     is_default: true,
   });
   const [deployOpen, setDeployOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editForm, setEditForm] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    contact_person: "",
+    contact_phone: "",
+    contact_email: "",
+    physical_address: "",
+    city: "",
+    county: "",
+    agreement_type: "revenue_share",
+    revenue_share_percent: "0",
+    fixed_amount: "0",
+    disbursement_frequency: "monthly",
+    disbursement_day: "1",
+    status: "active",
+  });
   const [deployForm, setDeployForm] = useState({
     machine_id: "",
     deployed_at: new Date().toISOString().slice(0, 16),
@@ -262,6 +281,7 @@ const PartnerProfilePage = () => {
     } else toast.error(res.error || "Failed");
   };
   const markPaid = async (disbId: string) => {
+    // eslint-disable-next-line no-alert
     const ref = prompt("Reference number (M-Pesa code / bank ref)?") || "";
     const res = await api.partners.updateDisbursement(disbId, {
       status: "paid",
@@ -270,6 +290,46 @@ const PartnerProfilePage = () => {
     });
     if (res.success) {
       toast.success("Marked paid");
+      load();
+    } else toast.error(res.error || "Failed");
+  };
+
+  const openEdit = () => {
+    setEditForm({
+      name: p.name || "",
+      email: p.email || "",
+      phone: p.phone || "",
+      contact_person: p.contact_person || "",
+      contact_phone: p.contact_phone || "",
+      contact_email: p.contact_email || "",
+      physical_address: p.physical_address || "",
+      city: p.city || "",
+      county: p.county || "",
+      agreement_type: p.agreement_type === "fixed_rent" ? "fixed" : "revenue_share",
+      revenue_share_percent: String(p.revenue_share_percent ?? 0),
+      fixed_amount: String(p.fixed_amount ?? 0),
+      disbursement_frequency: p.disbursement_frequency || "monthly",
+      disbursement_day: String(p.disbursement_day ?? 1),
+      status: p.status || "active",
+    });
+    setEditOpen(true);
+  };
+
+  const savePartner = async () => {
+    const pct = Number(editForm.revenue_share_percent);
+    if (editForm.agreement_type === "revenue_share" && (Number.isNaN(pct) || pct < 0 || pct > 100)) {
+      toast.error("Revenue share must be between 0 and 100");
+      return;
+    }
+    const res = await api.partners.update(id, {
+      ...editForm,
+      revenue_share_percent: pct,
+      fixed_amount: Number(editForm.fixed_amount),
+      disbursement_day: Number(editForm.disbursement_day),
+    });
+    if (res.success) {
+      toast.success("Partner updated");
+      setEditOpen(false);
       load();
     } else toast.error(res.error || "Failed");
   };
@@ -302,6 +362,10 @@ const PartnerProfilePage = () => {
             {" · "}
             {p.disbursement_frequency} · day {p.disbursement_day}
           </span>
+          <Button size="sm" variant="outline" onClick={openEdit}>
+            <Pencil className="h-3.5 w-3.5 mr-1" />
+            Edit partner
+          </Button>
         </div>
       </div>
 
@@ -883,6 +947,103 @@ const PartnerProfilePage = () => {
               Deploy
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit partner */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit partner details</DialogTitle>
+          </DialogHeader>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">Partner name</label>
+              <Input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">Login email</label>
+              <Input value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">Phone</label>
+              <Input value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">Status</label>
+              <Select value={editForm.status} onValueChange={(v) => setEditForm({ ...editForm, status: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="suspended">Suspended</SelectItem>
+                  <SelectItem value="terminated">Terminated</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">Contact person</label>
+              <Input value={editForm.contact_person} onChange={(e) => setEditForm({ ...editForm, contact_person: e.target.value })} />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">Contact phone</label>
+              <Input value={editForm.contact_phone} onChange={(e) => setEditForm({ ...editForm, contact_phone: e.target.value })} />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">Contact email</label>
+              <Input value={editForm.contact_email} onChange={(e) => setEditForm({ ...editForm, contact_email: e.target.value })} />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">Address</label>
+              <Input value={editForm.physical_address} onChange={(e) => setEditForm({ ...editForm, physical_address: e.target.value })} />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">City</label>
+              <Input value={editForm.city} onChange={(e) => setEditForm({ ...editForm, city: e.target.value })} />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">County</label>
+              <Input value={editForm.county} onChange={(e) => setEditForm({ ...editForm, county: e.target.value })} />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">Agreement type</label>
+              <Select value={editForm.agreement_type} onValueChange={(v) => setEditForm({ ...editForm, agreement_type: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="revenue_share">Revenue share</SelectItem>
+                  <SelectItem value="fixed">Fixed rent</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {editForm.agreement_type === "fixed" ? (
+              <div className="space-y-1">
+                <label className="text-xs text-muted-foreground">Fixed amount (KSh)</label>
+                <Input type="number" value={editForm.fixed_amount} onChange={(e) => setEditForm({ ...editForm, fixed_amount: e.target.value })} />
+              </div>
+            ) : (
+              <div className="space-y-1">
+                <label className="text-xs text-muted-foreground">Revenue share %</label>
+                <Input type="number" min={0} max={100} step="0.01" value={editForm.revenue_share_percent} onChange={(e) => setEditForm({ ...editForm, revenue_share_percent: e.target.value })} />
+              </div>
+            )}
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">Disbursement frequency</label>
+              <Select value={editForm.disbursement_frequency} onValueChange={(v) => setEditForm({ ...editForm, disbursement_frequency: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="weekly">Weekly</SelectItem>
+                  <SelectItem value="biweekly">Bi-weekly</SelectItem>
+                  <SelectItem value="monthly">Monthly</SelectItem>
+                  <SelectItem value="quarterly">Quarterly</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">Disbursement day</label>
+              <Input type="number" min={1} max={31} value={editForm.disbursement_day} onChange={(e) => setEditForm({ ...editForm, disbursement_day: e.target.value })} />
+            </div>
+          </div>
+          <Button className="w-full mt-4" onClick={savePartner}>Save changes</Button>
         </DialogContent>
       </Dialog>
     </div>

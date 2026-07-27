@@ -330,6 +330,7 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
                 </div>
               )}
             </div>
+            {flatItems.length > 1 && (
             <button
               className="sm:hidden p-2 text-muted-foreground"
               onClick={() => setMobileMenuOpen((o) => !o)}
@@ -337,11 +338,13 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
             >
               {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </button>
+            )}
           </div>
         </div>
       </header>
 
-      {/* Grouped Nav (desktop) */}
+      {/* Grouped Nav (desktop) — hidden for single-section roles (e.g. location partners) */}
+      {flatItems.length > 1 && (
       <nav className="bg-card border-b border-border">
         <div className="max-w-[1400px] mx-auto px-4 sm:px-6">
           <div className="hidden sm:flex items-center gap-1 flex-wrap">
@@ -394,6 +397,7 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
           )}
         </div>
       </nav>
+      )}
 
       <main className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6">{children}</main>
 

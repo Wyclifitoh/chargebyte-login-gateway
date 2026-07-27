@@ -33,7 +33,7 @@ const machineSchema = z.object({
   name: z.string().trim().min(1, "Required").max(100),
   model: z.string().trim().min(1, "Required").max(50),
   qr_code: z.string().trim().min(1, "Required").max(50),
-  station_id: z.string().min(1, "Required"),
+  station_id: z.string().optional(),
   total_slots: z.coerce.number().min(1).max(50),
 });
 
@@ -261,12 +261,21 @@ const MachinesTab = () => {
     return matchSearch && matchStation && matchStatus;
   });
 
+  const stationOptions = ((stationsQ.data as Station[]) || []).map((s) => ({ id: s.id, name: s.name }));
+
   const openCreate = () => { setEditing(null); form.reset({ name: "", model: "", qr_code: "", station_id: "", total_slots: 8 }); setDialogOpen(true); };
-  const openEdit = (m: ExtendedMachine) => { setEditing(m); form.reset({ name: m.name, model: m.model, qr_code: m.qr_code, station_id: m.station_id, total_slots: m.total_slots }); setDialogOpen(true); };
+  const openEdit = (m: ExtendedMachine) => { setEditing(m); form.reset({ name: m.name, model: m.model, qr_code: m.qr_code, station_id: m.station_id ?? "", total_slots: m.total_slots }); setDialogOpen(true); };
 
   const onSubmit = async (data: MachineFormValues) => {
     try {
-      const res = editing ? await api.machines.update(editing.id, data) : await api.machines.create(data);
+      if (!editing && !data.station_id) {
+        form.setError("station_id", { message: "Required" });
+        return;
+      }
+      const payload = editing
+        ? { name: data.name, model: data.model, qr_code: data.qr_code, total_slots: data.total_slots }
+        : data;
+      const res = editing ? await api.machines.update(editing.id, payload) : await api.machines.create(payload);
       if (!res.success) throw new Error(res.error || "Failed");
       toast.success(editing ? "Machine updated" : "Machine created");
       setDialogOpen(false);
@@ -376,12 +385,19 @@ const MachinesTab = () => {
                 <FormField control={form.control} name="qr_code" render={({ field }) => (<FormItem><FormLabel>QR Code</FormLabel><FormControl><Input placeholder="QR-CB001" {...field} /></FormControl><FormMessage /></FormItem>)} />
               </div>
               <div className="grid grid-cols-2 gap-4">
+                {editing ? (
+                  <FormItem>
+                    <FormLabel>Station</FormLabel>
+                    <Input value={editing.station} disabled readOnly />
+                  </FormItem>
+                ) : (
                 <FormField control={form.control} name="station_id" render={({ field }) => (
                   <FormItem><FormLabel>Station</FormLabel><FormControl>
                     <Select onValueChange={field.onChange} value={field.value}><SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
-                      <SelectContent>{mockExtendedStations.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
+                      <SelectContent>{stationOptions.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
                     </Select>
                   </FormControl><FormMessage /></FormItem>)} />
+                )}
                 <FormField control={form.control} name="total_slots" render={({ field }) => (<FormItem><FormLabel>Total Slots</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)} />
               </div>
               <Button type="submit" className="w-full">{editing ? "Update Machine" : "Create Machine"}</Button>
