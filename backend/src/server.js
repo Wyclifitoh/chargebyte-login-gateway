@@ -31,7 +31,10 @@ const performanceRoutes = require("./routes/performance.routes");
 const settingsRoutes = require("./routes/settings.routes");
 const chargenowRoutes = require("./routes/chargenow.routes");
 const chargenowPublicRoutes = require("./routes/chargenow-public.routes");
+const assetRoutes = require("./routes/asset.routes");
+const opsRoutes = require("./routes/ops.routes");
 const chargenowController = require("./controllers/chargenow.controller");
+const partnerDisbursementService = require("./services/partnerDisbursement.service");
 const { errorHandler, notFound } = require("./middleware/error.middleware");
 
 const app = express();
@@ -52,7 +55,10 @@ app.use(
 const limiter = rateLimit({
   windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,
   max: parseInt(process.env.RATE_LIMIT_MAX) || 100,
-  message: { success: false, error: "Too many requests, please try again later." },
+  message: {
+    success: false,
+    error: "Too many requests, please try again later.",
+  },
 });
 app.use("/api/", limiter);
 
@@ -60,7 +66,10 @@ app.use("/api/", limiter);
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 10,
-  message: { success: false, error: "Too many login attempts, please try again later." },
+  message: {
+    success: false,
+    error: "Too many login attempts, please try again later.",
+  },
 });
 app.use("/api/auth/login", authLimiter);
 
@@ -111,6 +120,8 @@ app.use("/api/support", supportRoutes);
 app.use("/api/performance", performanceRoutes);
 app.use("/api/settings", settingsRoutes);
 app.use("/api/chargenow", chargenowRoutes);
+app.use("/api/assets", assetRoutes);
+app.use("/api/ops", opsRoutes);
 // Public webhooks (manufacturer POSTs here — no auth, signature-verified)
 app.use("/api/webhooks", chargenowPublicRoutes);
 // Public M-Pesa callbacks (Safaricom hits these — no auth)
@@ -130,6 +141,11 @@ app.listen(PORT, () => {
     chargenowController.startBackgroundSync();
   } catch (e) {
     console.error("bg sync start:", e.message);
+  }
+  try {
+    partnerDisbursementService.startScheduler();
+  } catch (e) {
+    console.error("partner disbursement scheduler:", e.message);
   }
 });
 

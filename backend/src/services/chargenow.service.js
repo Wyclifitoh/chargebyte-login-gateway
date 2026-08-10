@@ -35,7 +35,14 @@ async function logCall(method, path, deviceId, status, ms, err) {
     await db.query(
       `INSERT INTO chargenow_api_logs (method, path, device_id, status_code, duration_ms, error)
        VALUES (?, ?, ?, ?, ?, ?)`,
-      [method, path, deviceId || null, status || null, ms, err ? String(err).slice(0, 1000) : null],
+      [
+        method,
+        path,
+        deviceId || null,
+        status || null,
+        ms,
+        err ? String(err).slice(0, 1000) : null,
+      ],
     );
   } catch (e) {
     console.error("chargenow log error:", e.message);
@@ -62,7 +69,14 @@ async function request(method, path, { params, data, deviceId } = {}) {
         timeout: TIMEOUT_MS,
         headers: { Authorization: auth, "Content-Type": "application/json" },
       });
-      await logCall(method, path, deviceId, res.status, Date.now() - start, null);
+      await logCall(
+        method,
+        path,
+        deviceId,
+        res.status,
+        Date.now() - start,
+        null,
+      );
       return res.data;
     } catch (e) {
       lastErr = e;
@@ -98,31 +112,75 @@ async function setEventPushConfig({ pushUrl, events }) {
 }
 
 // API 3: cabinet detail by device id
+// API 3: cabinet detail by device id
 async function getCabinet(deviceId) {
   if (!deviceId) throw new Error("deviceId required");
-  return request("GET", `/rent/cabinet/query`, {
+  const response = await request("GET", `/rent/cabinet/query`, {
     params: { deviceId },
     deviceId,
   });
+
+  // Check if the response indicates device is not online
+  if (response.code === 2004 && response.msg === "Device not online.") {
+    // Mark the machine as offline in the database
+    await db
+      .query(
+        `UPDATE machines 
+       SET 
+         is_online = 0,
+         status = 'offline',
+         last_synced_at = NOW(),
+         last_sync_error = 'Device reported as offline by manufacturer API'
+       WHERE model = ? OR cabinet_device_id = ?`,
+        [deviceId, deviceId],
+      )
+      .catch(() => {});
+
+    // Return a special response indicating offline status
+    return {
+      is_online: false,
+      online: false,
+      msg: "Device not online",
+      code: 2004,
+      _offline: true,
+    };
+  }
+
+  return response;
 }
 
 // Cached wrapper — refreshes machine telemetry columns on success.
 async function getCabinetCached(deviceId, maxAgeMs = 60_000) {
   if (!deviceId) return null;
+
   const hit = cabinetCache.get(deviceId);
   if (hit && Date.now() - hit.at < maxAgeMs) return hit.data;
+
   try {
     const data = await getCabinet(deviceId);
     cabinetCache.set(deviceId, { at: Date.now(), data });
-    await applyCabinetToMachine(deviceId, data).catch(() => {});
+
+    // Only apply if the response is not an offline error
+    if (!data._offline) {
+      await applyCabinetToMachine(deviceId, data).catch((err) => {
+        console.error("Error applying cabinet to machine:", err);
+      });
+    } else {
+      // Already updated status to offline in getCabinet
+      console.log(`Device ${deviceId} is offline`);
+    }
+
     return data;
   } catch (e) {
     // On failure, mark last_sync_error but keep any cached data
-    await db.query(
-      `UPDATE machines SET last_sync_error = ?, last_synced_at = NOW()
-       WHERE cabinet_device_id = ?`,
-      [String(e.message || e).slice(0, 500), deviceId],
-    ).catch(() => {});
+    await db
+      .query(
+        `UPDATE machines 
+         SET last_sync_error = ?, last_synced_at = NOW()
+         WHERE model = ? OR cabinet_device_id = ?`,
+        [String(e.message || e).slice(0, 500), deviceId, deviceId],
+      )
+      .catch(() => {});
     if (hit) return hit.data;
     throw e;
   }
@@ -132,19 +190,34 @@ async function getCabinetCached(deviceId, maxAgeMs = 60_000) {
 // key is present. Extra fields are ignored.
 function normalizeCabinet(raw) {
   const d = raw?.data || raw || {};
+  const cabinet = d.cabinet || {};
+  const shop = d.shop || {};
+  const priceStrategy = d.priceStrategy || {};
+
   return {
-    is_online:
-      d.online != null ? (d.online ? 1 : 0) :
-      d.status === "online" ? 1 :
-      d.status === "offline" ? 0 : null,
-    signal_strength: numOrNull(d.signal ?? d.signalStrength ?? d.rssi),
-    empty_slots: numOrNull(d.emptySlots ?? d.freeSlots ?? d.available),
-    busy_slots: numOrNull(d.busySlots ?? d.usedSlots ?? d.rented),
-    cabinet_model: d.model ?? d.cabinetModel ?? null,
-    manufacturer_cabinet_id: d.cabinetId ?? d.pCabinetId ?? null,
-    batteries: Array.isArray(d.batteries) ? d.batteries : Array.isArray(d.slots) ? d.slots : [],
+    is_online: cabinet.online != null ? (cabinet.online ? 1 : 0) : null,
+    signal_strength: numOrNull(cabinet.signal ?? d.signal ?? d.signalStrength),
+    empty_slots: numOrNull(cabinet.emptySlots ?? d.emptySlots ?? d.freeSlots),
+    busy_slots: numOrNull(cabinet.busySlots ?? d.busySlots ?? d.rented),
+    total_slots: numOrNull(cabinet.slots ?? d.slots),
+    cabinet_model: cabinet.type ?? d.model ?? d.cabinetModel ?? null,
+    manufacturer_cabinet_id: cabinet.id ?? d.cabinetId ?? d.pCabinetId ?? null,
+    shop_name: shop.name || null,
+    shop_address: shop.address || null,
+    shop_latitude: shop.latitude || null,
+    shop_longitude: shop.longitude || null,
+    deposit_amount: priceStrategy.depositAmount || null,
+    price_per_minute: priceStrategy.priceMinute || null,
+    free_minutes: priceStrategy.freeMinutes || null,
+    daily_max_price: priceStrategy.dailyMaxPrice || null,
+    batteries: Array.isArray(d.batteries)
+      ? d.batteries
+      : Array.isArray(d.slots)
+        ? d.slots
+        : [],
   };
 }
+
 function numOrNull(v) {
   if (v == null) return null;
   const n = Number(v);
@@ -152,47 +225,120 @@ function numOrNull(v) {
 }
 
 async function applyCabinetToMachine(deviceId, raw) {
+  // If raw indicates offline, skip processing
+  if (raw && raw._offline) {
+    return null;
+  }
+
+  // Check if raw has the expected data structure
+  if (!raw || !raw.data) {
+    console.log(`No valid data for deviceId: ${deviceId}`);
+    return null;
+  }
+
   const n = normalizeCabinet(raw);
+
+  // Find machine by model (or cabinet_device_id)
+  const [machineResult] = await db.query(
+    "SELECT id, station_id FROM machines WHERE model = ? OR cabinet_device_id = ?",
+    [deviceId, deviceId],
+  );
+
+  if (machineResult.length === 0) {
+    console.log(`No machine found for deviceId: ${deviceId}`);
+    return n;
+  }
+
+  const machineId = machineResult[0].id;
+  const currentStationId = machineResult[0].station_id;
+
+  // If shop data exists and we have a station, update the station too
+  if (n.shop_name && currentStationId) {
+    await db
+      .query(
+        `UPDATE cb_stations 
+       SET 
+         name = COALESCE(?, name),
+         address = COALESCE(?, address),
+         latitude = COALESCE(?, latitude),
+         longitude = COALESCE(?, longitude)
+       WHERE id = ?`,
+        [
+          n.shop_name,
+          n.shop_address,
+          n.shop_latitude,
+          n.shop_longitude,
+          currentStationId,
+        ],
+      )
+      .catch((err) => console.error("Error updating station:", err));
+  }
+
+  // Update the machine
   await db.query(
     `UPDATE machines
-       SET is_online = COALESCE(?, is_online),
-           signal_strength = COALESCE(?, signal_strength),
-           empty_slots = COALESCE(?, empty_slots),
-           busy_slots = COALESCE(?, busy_slots),
-           cabinet_model = COALESCE(?, cabinet_model),
-           manufacturer_cabinet_id = COALESCE(?, manufacturer_cabinet_id),
-           last_synced_at = NOW(),
-           last_sync_error = NULL
-     WHERE cabinet_device_id = ?`,
+     SET 
+       is_online = COALESCE(?, is_online),
+       signal_strength = COALESCE(?, signal_strength),
+       empty_slots = COALESCE(?, empty_slots),
+       busy_slots = COALESCE(?, busy_slots),
+       total_slots = COALESCE(?, total_slots),
+       cabinet_model = COALESCE(?, cabinet_model),
+       manufacturer_cabinet_id = COALESCE(?, manufacturer_cabinet_id),
+       cabinet_device_id = COALESCE(?, cabinet_device_id),
+       status = CASE 
+         WHEN ? = 1 THEN 'online'
+         WHEN ? = 0 THEN 'offline'
+         ELSE status
+       END,
+       last_synced_at = NOW(),
+       last_sync_error = NULL
+     WHERE id = ?`,
     [
-      n.is_online, n.signal_strength, n.empty_slots, n.busy_slots,
-      n.cabinet_model, n.manufacturer_cabinet_id, deviceId,
+      n.is_online,
+      n.signal_strength,
+      n.empty_slots,
+      n.busy_slots,
+      n.total_slots,
+      n.cabinet_model,
+      n.manufacturer_cabinet_id,
+      deviceId,
+      n.is_online,
+      n.is_online,
+      machineId,
     ],
   );
-  // Upsert powerbanks seen in this cabinet
+
+  // Update powerbanks only if we have batteries data
   if (Array.isArray(n.batteries) && n.batteries.length) {
-    const [[machine]] = [
-      await db.query("SELECT id FROM machines WHERE cabinet_device_id = ? LIMIT 1", [deviceId]),
-    ];
-    const machineId = machine?.[0]?.id || null;
+    // First, clear existing powerbanks for this machine (since we're getting fresh data)
+    // Or you can update them individually
     for (const b of n.batteries) {
       const batteryId = b.batteryId || b.battery_id || b.bId || b.id;
       if (!batteryId) continue;
       const voltage = numOrNull(b.voltage ?? b.vol);
       const soc = numOrNull(b.soc ?? b.percent ?? b.electricQuantity);
-      await db.query(
-        `INSERT INTO powerbanks (id, machine_id, battery_id, voltage, soc_percent, status, last_seen_at)
-         VALUES (UUID(), ?, ?, ?, ?, 'in_cabinet', NOW())
+      const slotNum = b.slotNum || b.slot || 0;
+
+      await db
+        .query(
+          `INSERT INTO powerbanks 
+         (id, machine_id, battery_id, slot_number, voltage, soc_percent, status, last_seen_at, created_at, updated_at)
+         VALUES (UUID(), ?, ?, ?, ?, ?, 'in_cabinet', NOW(), NOW(), NOW())
          ON DUPLICATE KEY UPDATE
            machine_id = VALUES(machine_id),
-           voltage = VALUES(voltage),
-           soc_percent = VALUES(soc_percent),
+           slot_number = VALUES(slot_number),
+           voltage = COALESCE(VALUES(voltage), voltage),
+           soc_percent = COALESCE(VALUES(soc_percent), soc_percent),
            status = 'in_cabinet',
-           last_seen_at = NOW()`,
-        [machineId, batteryId, voltage, soc],
-      ).catch(() => {});
+           last_seen_at = NOW(),
+           updated_at = NOW()`,
+          [machineId, batteryId, slotNum, voltage, soc],
+        )
+        .catch((err) => console.error("Error upserting powerbank:", err));
     }
   }
+
   return n;
 }
 

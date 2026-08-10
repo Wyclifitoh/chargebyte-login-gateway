@@ -91,8 +91,8 @@ const DailyUpdatesPage = () => {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Daily Updates"
-        description={isPriv ? "All employee daily updates across departments." : "Submit and manage your daily operational updates."}
+        title="Weekly Updates"
+        description={isPriv ? "All employee weekly updates across departments." : "Submit and manage your weekly operational updates."}
         actions={<Button onClick={openCreate}><Plus className="h-4 w-4 mr-1" /> New Update</Button>}
       />
 
@@ -121,7 +121,7 @@ const DailyUpdatesPage = () => {
       </div>
 
       {loading ? <TableSkeleton rows={5} /> : filtered.length === 0 ? (
-        <EmptyState title="No daily updates yet" description="Share what you're working on to keep the team aligned." action={<Button onClick={openCreate}><Plus className="h-4 w-4 mr-1" /> New Update</Button>} />
+        <EmptyState title="No weekly updates yet" description="Share what you're working on to keep the team aligned." action={<Button onClick={openCreate}><Plus className="h-4 w-4 mr-1" /> New Update</Button>} />
       ) : (
         <div className="space-y-3">
           {filtered.map((r) => (
@@ -154,7 +154,7 @@ const DailyUpdatesPage = () => {
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>{editing ? "Edit Daily Update" : "Submit Daily Update"}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{editing ? "Edit Weekly Update" : "Submit Weekly Update"}</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
               <div><Label>Date</Label><Input type="date" value={form.update_date} onChange={(e) => setForm({ ...form, update_date: e.target.value })} /></div>
@@ -195,7 +195,7 @@ const DailyUpdatesPage = () => {
 
       <ConfirmDialog
         open={!!confirmDel} onOpenChange={(o) => !o && setConfirmDel(null)}
-        title="Delete daily update?" description="This cannot be undone." onConfirm={remove} confirmLabel="Delete" variant="destructive"
+        title="Delete weekly update?" description="This cannot be undone." onConfirm={remove} confirmLabel="Delete" variant="destructive"
       />
     </div>
   );

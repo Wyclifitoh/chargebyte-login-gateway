@@ -38,9 +38,10 @@ export const ROLE_DASHBOARD_PATHS: Record<UserRole, string> = {
   system: "/dashboard",
 };
 
-// Which nav items each role can see
-// Super Admin: everything. Admin: ops-focused (no revenue/mpesa/partners/adclients/transactions/campaigns/audit).
-// Staff: clock-in, daily report, alerts.
+// Which nav items each role can see.
+// Super Admin + Admin (Operations): full administrative access.
+// Staff (field agents): time tracking and activity reporting ONLY.
+// External roles (partners, ad clients): scoped to their own surface.
 export const ROLE_NAV_ACCESS: Record<UserRole, string[]> = {
   super_admin: [
     "overview",
@@ -56,7 +57,6 @@ export const ROLE_NAV_ACCESS: Record<UserRole, string[]> = {
     "transactions",
     "mpesa",
     "audit",
-    "operations",
     "notifications",
     "clockin",
     "reports",
@@ -68,7 +68,6 @@ export const ROLE_NAV_ACCESS: Record<UserRole, string[]> = {
     "ops_updates",
     "ops_field",
     "ops_departments",
-    "ops_tasks",
     "ops_calendar",
     "events",
   ],
@@ -79,7 +78,9 @@ export const ROLE_NAV_ACCESS: Record<UserRole, string[]> = {
     "stations",
     "users",
     "forms",
-    "operations",
+    "revenue",
+    "transactions",
+    "partners",
     "notifications",
     "clockin",
     "reports",
@@ -91,27 +92,17 @@ export const ROLE_NAV_ACCESS: Record<UserRole, string[]> = {
     "ops_updates",
     "ops_field",
     "ops_departments",
-    "ops_tasks",
     "ops_calendar",
     "events",
   ],
   staff: [
-    "overview",
-    "rentals",
     "clockin",
-    "reports",
     "notifications",
-    "support",
-    "ops",
     "ops_updates",
     "ops_field",
-    "ops_departments",
-    "ops_tasks",
-    "ops_calendar",
-    "events",
   ],
   location_partner: ["partner"],
-  funding_partner: ["overview", "partner", "revenue", "notifications"],
+  funding_partner: ["partner", "notifications"],
   ad_client: ["overview", "campaigns", "notifications"],
   system: ["overview"],
 };

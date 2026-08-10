@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,11 +12,11 @@ import { Switch } from "@/components/ui/switch";
 import StatusBadge from "@/components/StatusBadge";
 import { PageHeader, FilterBar, EmptyState, DetailRow, TableSkeleton, FallbackBanner } from "@/components/shared";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { mockExtendedStations, mockExtendedMachines, ExtendedStation, ExtendedMachine } from "@/data/extendedMockData";
-import { useStations, useMachines } from "@/hooks/useDashboardData";
+import { mockExtendedStations, ExtendedStation } from "@/data/extendedMockData";
+import { useStations } from "@/hooks/useDashboardData";
 import { api } from "@/services/api";
-import type { Station, Machine } from "@/types/dashboard";
-import { Plus, Eye, Pencil, Power, Wrench, MapPin, Cpu, Trash2 } from "lucide-react";
+import type { Station } from "@/types/dashboard";
+import { Plus, Eye, Pencil, Power, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 const stationSchema = z.object({
@@ -29,16 +28,7 @@ const stationSchema = z.object({
   open_hours: z.string().trim().min(1, "Required").max(50),
 });
 
-const machineSchema = z.object({
-  name: z.string().trim().min(1, "Required").max(100),
-  model: z.string().trim().min(1, "Required").max(50),
-  qr_code: z.string().trim().min(1, "Required").max(50),
-  station_id: z.string().optional(),
-  total_slots: z.coerce.number().min(1).max(50),
-});
-
 type StationFormValues = z.infer<typeof stationSchema>;
-type MachineFormValues = z.infer<typeof machineSchema>;
 
 const StationsTab = () => {
   const stationsQ = useStations();
@@ -220,225 +210,10 @@ const StationsTab = () => {
     </div>
   );
 };
-
-const MachinesTab = () => {
-  const machinesQ = useMachines();
-  const stationsQ = useStations();
-  const [machines, setMachines] = useState<ExtendedMachine[]>(mockExtendedMachines);
-  const [search, setSearch] = useState("");
-  const [filterStation, setFilterStation] = useState("all");
-  const [filterStatus, setFilterStatus] = useState("all");
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [editing, setEditing] = useState<ExtendedMachine | null>(null);
-  const [viewing, setViewing] = useState<ExtendedMachine | null>(null);
-
-  useEffect(() => {
-    if (machinesQ.isLoading || machinesQ.isFallback) return;
-    const stationLookup = new Map((stationsQ.data as Station[]).map((s) => [s.id, s.name]));
-    const mapped: ExtendedMachine[] = (machinesQ.data as Machine[]).map((m) => ({
-      id: m.id,
-      name: m.name,
-      station: m.station_name ?? stationLookup.get(m.station_id) ?? "—",
-      station_id: m.station_id,
-      model: m.model,
-      qr_code: m.qr_code,
-      total_slots: m.total_slots,
-      available_slots: m.available_slots,
-      status: m.status,
-      is_active: m.is_active,
-      last_maintenance: m.last_maintenance ?? "—",
-      created_at: m.created_at,
-    }));
-    setMachines(mapped);
-  }, [machinesQ.data, machinesQ.isLoading, machinesQ.isFallback, stationsQ.data]);
-
-  const form = useForm<MachineFormValues>({ resolver: zodResolver(machineSchema), defaultValues: { name: "", model: "", qr_code: "", station_id: "", total_slots: 8 } });
-  const stationNames = [...new Set(machines.map((m) => m.station))];
-  const filtered = machines.filter((m) => {
-    const matchSearch = m.name.toLowerCase().includes(search.toLowerCase()) || m.qr_code.toLowerCase().includes(search.toLowerCase());
-    const matchStation = filterStation === "all" || m.station === filterStation;
-    const matchStatus = filterStatus === "all" || m.status === filterStatus;
-    return matchSearch && matchStation && matchStatus;
-  });
-
-  const stationOptions = ((stationsQ.data as Station[]) || []).map((s) => ({ id: s.id, name: s.name }));
-
-  const openCreate = () => { setEditing(null); form.reset({ name: "", model: "", qr_code: "", station_id: "", total_slots: 8 }); setDialogOpen(true); };
-  const openEdit = (m: ExtendedMachine) => { setEditing(m); form.reset({ name: m.name, model: m.model, qr_code: m.qr_code, station_id: m.station_id ?? "", total_slots: m.total_slots }); setDialogOpen(true); };
-
-  const onSubmit = async (data: MachineFormValues) => {
-    try {
-      if (!editing && !data.station_id) {
-        form.setError("station_id", { message: "Required" });
-        return;
-      }
-      const payload = editing
-        ? { name: data.name, model: data.model, qr_code: data.qr_code, total_slots: data.total_slots }
-        : data;
-      const res = editing ? await api.machines.update(editing.id, payload) : await api.machines.create(payload);
-      if (!res.success) throw new Error(res.error || "Failed");
-      toast.success(editing ? "Machine updated" : "Machine created");
-      setDialogOpen(false);
-      machinesQ.refetch();
-    } catch (e) { toast.error(e instanceof Error ? e.message : "Save failed"); }
-  };
-
-  const toggleActive = async (m: ExtendedMachine) => {
-    const res = await api.machines.update(m.id, { is_active: !m.is_active });
-    if (res.success) { toast.success("Toggled"); machinesQ.refetch(); }
-    else toast.error(res.error || "Failed");
-  };
-  const setMaintenance = async (id: string) => {
-    const res = await api.machines.update(id, { status: "maintenance", last_maintenance: new Date().toISOString().split("T")[0] });
-    if (res.success) { toast.success("Set to maintenance"); machinesQ.refetch(); }
-    else toast.error(res.error || "Failed");
-  };
-  const removeMachine = async (id: string) => {
-    if (!confirm("Delete this machine?")) return;
-    const res = await api.machines.delete(id);
-    if (res.success) { toast.success("Deleted"); machinesQ.refetch(); }
-    else toast.error(res.error || "Failed");
-  };
-
-  return (
-    <div className="space-y-4">
-      {machinesQ.isFallback && !machinesQ.isLoading && <FallbackBanner onRetry={machinesQ.refetch} />}
-      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
-        <FilterBar searchValue={search} onSearchChange={setSearch} searchPlaceholder="Search machines...">
-          <Select value={filterStation} onValueChange={setFilterStation}>
-            <SelectTrigger className="w-[150px] h-9"><SelectValue placeholder="Station" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Stations</SelectItem>
-              {stationNames.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={filterStatus} onValueChange={setFilterStatus}>
-            <SelectTrigger className="w-[140px] h-9"><SelectValue placeholder="Status" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="online">Online</SelectItem>
-              <SelectItem value="offline">Offline</SelectItem>
-              <SelectItem value="maintenance">Maintenance</SelectItem>
-              <SelectItem value="faulty">Faulty</SelectItem>
-            </SelectContent>
-          </Select>
-        </FilterBar>
-        <Button onClick={openCreate} size="sm"><Plus className="h-4 w-4 mr-1" />Add Machine</Button>
-      </div>
-
-      {machinesQ.isLoading ? <TableSkeleton rows={6} columns={10} /> : (
-      <Card>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border">
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">Name</th>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">QR Code</th>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">Model</th>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">Station</th>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">Slots</th>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">Available</th>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">Status</th>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">Maintenance</th>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">Active</th>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((m) => (
-                <tr key={m.id} className="border-b border-border last:border-0 hover:bg-muted/50">
-                  <td className="px-4 py-3 font-medium text-foreground">{m.name}</td>
-                  <td className="px-4 py-3 text-foreground font-mono text-xs">{m.qr_code}</td>
-                  <td className="px-4 py-3 text-foreground">{m.model}</td>
-                  <td className="px-4 py-3 text-foreground">{m.station}</td>
-                  <td className="px-4 py-3 text-foreground">{m.total_slots}</td>
-                  <td className="px-4 py-3 text-foreground">{m.available_slots}</td>
-                  <td className="px-4 py-3"><StatusBadge status={m.status} /></td>
-                  <td className="px-4 py-3 text-foreground">{m.last_maintenance}</td>
-                  <td className="px-4 py-3"><StatusBadge status={m.is_active ? "active" : "inactive"} /></td>
-                  <td className="px-4 py-3">
-                    <div className="flex gap-1">
-                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setViewing(m)}><Eye className="h-3.5 w-3.5" /></Button>
-                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(m)}><Pencil className="h-3.5 w-3.5" /></Button>
-                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setMaintenance(m.id)}><Wrench className="h-3.5 w-3.5" /></Button>
-                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => toggleActive(m)}><Power className="h-3.5 w-3.5" /></Button>
-                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => removeMachine(m.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {filtered.length === 0 && <tr><td colSpan={10}><EmptyState title="No machines found" /></td></tr>}
-            </tbody>
-          </table>
-        </div>
-      </Card>
-      )}
-
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader><DialogTitle>{editing ? "Edit Machine" : "Add New Machine"}</DialogTitle></DialogHeader>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel>Machine Name</FormLabel><FormControl><Input placeholder="Charger Alpha" {...field} /></FormControl><FormMessage /></FormItem>)} />
-              <div className="grid grid-cols-2 gap-4">
-                <FormField control={form.control} name="model" render={({ field }) => (<FormItem><FormLabel>Model</FormLabel><FormControl><Input placeholder="CB-X200" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                <FormField control={form.control} name="qr_code" render={({ field }) => (<FormItem><FormLabel>QR Code</FormLabel><FormControl><Input placeholder="QR-CB001" {...field} /></FormControl><FormMessage /></FormItem>)} />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                {editing ? (
-                  <FormItem>
-                    <FormLabel>Station</FormLabel>
-                    <Input value={editing.station} disabled readOnly />
-                  </FormItem>
-                ) : (
-                <FormField control={form.control} name="station_id" render={({ field }) => (
-                  <FormItem><FormLabel>Station</FormLabel><FormControl>
-                    <Select onValueChange={field.onChange} value={field.value}><SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
-                      <SelectContent>{stationOptions.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
-                    </Select>
-                  </FormControl><FormMessage /></FormItem>)} />
-                )}
-                <FormField control={form.control} name="total_slots" render={({ field }) => (<FormItem><FormLabel>Total Slots</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)} />
-              </div>
-              <Button type="submit" className="w-full">{editing ? "Update Machine" : "Create Machine"}</Button>
-            </form>
-          </Form>
-        </DialogContent>
-      </Dialog>
-
-      <Sheet open={!!viewing} onOpenChange={() => setViewing(null)}>
-        <SheetContent>
-          <SheetHeader><SheetTitle>{viewing?.name}</SheetTitle></SheetHeader>
-          {viewing && (
-            <div className="mt-6 space-y-1">
-              <DetailRow label="ID" value={viewing.id} />
-              <DetailRow label="Model" value={viewing.model} />
-              <DetailRow label="QR Code" value={viewing.qr_code} />
-              <DetailRow label="Station" value={viewing.station} />
-              <DetailRow label="Slots" value={`${viewing.available_slots}/${viewing.total_slots}`} />
-              <DetailRow label="Status" value={<StatusBadge status={viewing.status} />} />
-              <DetailRow label="Active" value={<StatusBadge status={viewing.is_active ? "active" : "inactive"} />} />
-              <DetailRow label="Last Maintenance" value={viewing.last_maintenance} />
-              <DetailRow label="Created" value={viewing.created_at} />
-            </div>
-          )}
-        </SheetContent>
-      </Sheet>
-    </div>
-  );
-};
-
 const StationsPage = () => (
   <div className="space-y-6">
-    <PageHeader title="Stations & Machines" description="Manage charging stations and machines" />
-    <Tabs defaultValue="stations" className="w-full">
-      <TabsList className="grid w-full grid-cols-2 max-w-xs">
-        <TabsTrigger value="stations"><MapPin className="h-4 w-4 mr-1" />Stations</TabsTrigger>
-        <TabsTrigger value="machines"><Cpu className="h-4 w-4 mr-1" />Machines</TabsTrigger>
-      </TabsList>
-      <TabsContent value="stations" className="mt-4"><StationsTab /></TabsContent>
-      <TabsContent value="machines" className="mt-4"><MachinesTab /></TabsContent>
-    </Tabs>
+    <PageHeader title="Stations" description="Manage charging locations. Machines are managed under Assets → Machines." />
+    <StationsTab />
   </div>
 );
 

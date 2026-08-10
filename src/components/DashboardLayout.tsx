@@ -46,16 +46,14 @@ type NavGroup = { id: string; label: string; icon: LucideIcon; items: NavLeaf[] 
 const NAV_GROUPS: NavGroup[] = [
   {
     id: "field_assets",
-    label: "Field & Assets",
+    label: "Assets",
     icon: Briefcase,
     items: [
       { id: "rentals", label: "Rentals", icon: Car, path: "/dashboard/rentals" },
       { id: "machines", label: "Machines", icon: Cpu, path: "/dashboard/machines" },
       { id: "stations", label: "Stations", icon: MapPin, path: "/dashboard/stations" },
       { id: "partner", label: "My Machines", icon: Cpu, path: "/dashboard/partner" },
-      { id: "operations", label: "Field Ops", icon: Briefcase, path: "/dashboard/operations" },
       { id: "support", label: "Support", icon: LifeBuoy, path: "/dashboard/support" },
-      { id: "assets", label: "Asset Tracker", icon: Package, path: "/dashboard/assets" },
     ],
   },
   {
@@ -64,7 +62,7 @@ const NAV_GROUPS: NavGroup[] = [
     icon: Activity,
     items: [
       { id: "ops", label: "Dashboard", icon: LayoutDashboard, path: "/dashboard/ops" },
-      { id: "ops_updates", label: "Daily Updates", icon: FileText, path: "/dashboard/ops/updates" },
+      { id: "ops_updates", label: "Weekly Updates", icon: FileText, path: "/dashboard/ops/updates" },
       { id: "ops_field", label: "Field Activities", icon: MapPinned, path: "/dashboard/ops/field" },
       {
         id: "ops_departments",
@@ -72,7 +70,7 @@ const NAV_GROUPS: NavGroup[] = [
         icon: Building2,
         path: "/dashboard/ops/departments",
       },
-      { id: "ops_tasks", label: "Tasks", icon: CheckSquare, path: "/dashboard/ops/tasks" },
+      { id: "assets", label: "Asset Tracker", icon: Package, path: "/dashboard/assets" },
       { id: "events", label: "Events", icon: CalendarDays, path: "/dashboard/events" },
       {
         id: "ops_calendar",

@@ -13,17 +13,29 @@ router.use(authorize("super_admin", "admin", "staff"));
 router.get("/leads", controller.getLeads);
 router.post(
   "/leads",
-  [body("name").trim().notEmpty(), body("email").optional().isEmail(), validate],
+  [
+    body("name").trim().notEmpty(),
+    body("email").optional().isEmail(),
+    validate,
+  ],
   controller.createLead,
 );
-router.put("/leads/:id", [param("id").isUUID(), validate], controller.updateLead);
+router.put(
+  "/leads/:id",
+  [param("id").isUUID(), validate],
+  controller.updateLead,
+);
 
 // Reports
 router.get("/reports", controller.getReports);
 router.post(
   "/reports",
   requireClockedIn,
-  [body("title").trim().notEmpty(), body("type").isIn(["daily", "weekly", "monthly"]), validate],
+  [
+    body("title").trim().notEmpty(),
+    body("type").isIn(["daily", "weekly", "monthly"]),
+    validate,
+  ],
   controller.createReport,
 );
 

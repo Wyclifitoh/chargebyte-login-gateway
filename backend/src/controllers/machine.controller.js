@@ -41,7 +41,10 @@ exports.getById = async (req, res, next) => {
       "SELECT m.*, s.name as station_name FROM machines m JOIN cb_stations s ON m.station_id = s.id WHERE m.id = ?",
       [req.params.id],
     );
-    if (!rows.length) return res.status(404).json({ success: false, error: "Machine not found" });
+    if (!rows.length)
+      return res
+        .status(404)
+        .json({ success: false, error: "Machine not found" });
     res.json({ success: true, data: rows[0] });
   } catch (error) {
     next(error);
@@ -95,6 +98,8 @@ exports.update = async (req, res, next) => {
       "total_slots",
       "available_slots",
       "is_active",
+      "status",
+      "last_maintenance",
       "cabinet_device_id",
       "cabinet_model",
       "manufacturer_cabinet_id",
@@ -103,14 +108,20 @@ exports.update = async (req, res, next) => {
     const values = [];
     for (const f of fields) {
       if (req.body[f] !== undefined) {
+        if (f === "station_id" && !req.body[f]) continue; // never clear station via edit
         updates.push(`${f} = ?`);
         values.push(req.body[f]);
       }
     }
     if (!updates.length)
-      return res.status(400).json({ success: false, error: "No fields to update" });
+      return res
+        .status(400)
+        .json({ success: false, error: "No fields to update" });
     values.push(req.params.id);
-    await db.query(`UPDATE machines SET ${updates.join(", ")} WHERE id = ?`, values);
+    await db.query(
+      `UPDATE machines SET ${updates.join(", ")} WHERE id = ?`,
+      values,
+    );
     res.json({ success: true, data: { id: req.params.id, ...req.body } });
   } catch (error) {
     next(error);
@@ -126,7 +137,25 @@ exports.setStatus = async (req, res, next) => {
       `UPDATE machines SET status = ?, ${status === "maintenance" ? "last_maintenance = NOW()," : ""} is_available = ? WHERE id = ?`,
       [status, status === "online" ? 1 : 0, req.params.id],
     );
-    res.json({ success: true, data: { message: `Machine status set to ${status}` } });
+    res.json({
+      success: true,
+      data: { message: `Machine status set to ${status}` },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.remove = async (req, res, next) => {
+  try {
+    const [r] = await db.query("DELETE FROM machines WHERE id = ?", [
+      req.params.id,
+    ]);
+    if (!r.affectedRows)
+      return res
+        .status(404)
+        .json({ success: false, error: "Machine not found" });
+    res.json({ success: true, data: { id: req.params.id } });
   } catch (error) {
     next(error);
   }

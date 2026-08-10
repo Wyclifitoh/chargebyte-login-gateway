@@ -36,8 +36,13 @@ exports.getAll = async (req, res, next) => {
 
 exports.getById = async (req, res, next) => {
   try {
-    const [rows] = await db.query("SELECT * FROM cb_stations WHERE id = ?", [req.params.id]);
-    if (!rows.length) return res.status(404).json({ success: false, error: "Station not found" });
+    const [rows] = await db.query("SELECT * FROM cb_stations WHERE id = ?", [
+      req.params.id,
+    ]);
+    if (!rows.length)
+      return res
+        .status(404)
+        .json({ success: false, error: "Station not found" });
     res.json({ success: true, data: rows[0] });
   } catch (error) {
     next(error);
@@ -101,15 +106,22 @@ exports.update = async (req, res, next) => {
     for (const f of fields) {
       if (req.body[f] !== undefined) {
         updates.push(`${f} = ?`);
-        values.push(f === "features" ? JSON.stringify(req.body[f]) : req.body[f]);
+        values.push(
+          f === "features" ? JSON.stringify(req.body[f]) : req.body[f],
+        );
       }
     }
 
     if (!updates.length)
-      return res.status(400).json({ success: false, error: "No fields to update" });
+      return res
+        .status(400)
+        .json({ success: false, error: "No fields to update" });
 
     values.push(req.params.id);
-    await db.query(`UPDATE cb_stations SET ${updates.join(", ")} WHERE id = ?`, values);
+    await db.query(
+      `UPDATE cb_stations SET ${updates.join(", ")} WHERE id = ?`,
+      values,
+    );
     res.json({ success: true, data: { id: req.params.id, ...req.body } });
   } catch (error) {
     next(error);
@@ -118,9 +130,10 @@ exports.update = async (req, res, next) => {
 
 exports.toggleActive = async (req, res, next) => {
   try {
-    await db.query("UPDATE cb_stations SET is_active = NOT is_active WHERE id = ?", [
-      req.params.id,
-    ]);
+    await db.query(
+      "UPDATE cb_stations SET is_active = NOT is_active WHERE id = ?",
+      [req.params.id],
+    );
     res.json({ success: true, data: { message: "Station toggled" } });
   } catch (error) {
     next(error);

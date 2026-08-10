@@ -20,7 +20,6 @@ import PartnerDashboardPage from "@/pages/dashboard/PartnerDashboardPage";
 import TransactionsPage from "@/pages/dashboard/TransactionsPage";
 import MpesaPage from "@/pages/dashboard/MpesaPage";
 import AuditLogsPage from "@/pages/dashboard/AuditLogsPage";
-import OperationsPage from "@/pages/dashboard/OperationsPage";
 import NotificationsPage from "@/pages/dashboard/NotificationsPage";
 import PartnersPage from "@/pages/dashboard/PartnersPage";
 import PartnerProfilePage from "@/pages/dashboard/PartnerProfilePage";
@@ -37,7 +36,6 @@ import OperationsDashboardPage from "@/pages/dashboard/operations/OperationsDash
 import DailyUpdatesPage from "@/pages/dashboard/operations/DailyUpdatesPage";
 import FieldActivitiesPage from "@/pages/dashboard/operations/FieldActivitiesPage";
 import DepartmentUpdatesPage from "@/pages/dashboard/operations/DepartmentUpdatesPage";
-import OpsTasksPage from "@/pages/dashboard/operations/OpsTasksPage";
 import OpsCalendarPage from "@/pages/dashboard/operations/OpsCalendarPage";
 
 const queryClient = new QueryClient();
@@ -178,14 +176,6 @@ const App = () => (
               }
             />
             <Route
-              path="/dashboard/operations"
-              element={
-                <DashboardRoute section="operations">
-                  <OperationsPage />
-                </DashboardRoute>
-              }
-            />
-            <Route
               path="/dashboard/notifications"
               element={
                 <DashboardRoute section="notifications">
@@ -286,14 +276,6 @@ const App = () => (
               element={
                 <DashboardRoute section="ops_departments">
                   <DepartmentUpdatesPage />
-                </DashboardRoute>
-              }
-            />
-            <Route
-              path="/dashboard/ops/tasks"
-              element={
-                <DashboardRoute section="ops_tasks">
-                  <OpsTasksPage />
                 </DashboardRoute>
               }
             />
