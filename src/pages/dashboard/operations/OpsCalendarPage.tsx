@@ -15,8 +15,29 @@ type EventType = "field_visit" | "meeting" | "deadline" | "dept_activity" | "mai
 interface Ev {
   id: string; title: string; description?: string | null; event_type: EventType;
   start_at: string; end_at?: string | null; all_day: number;
-  department?: string | null; created_by_name?: string | null;
+  department?: string | null; created_by?: string | null; created_by_name?: string | null;
 }
+
+// Distinct per-user colours so ownership is obvious at a glance.
+const USER_COLORS = [
+  "bg-blue-100 text-blue-800 border-blue-300",
+  "bg-emerald-100 text-emerald-800 border-emerald-300",
+  "bg-amber-100 text-amber-800 border-amber-300",
+  "bg-violet-100 text-violet-800 border-violet-300",
+  "bg-rose-100 text-rose-800 border-rose-300",
+  "bg-cyan-100 text-cyan-800 border-cyan-300",
+  "bg-lime-100 text-lime-800 border-lime-300",
+  "bg-fuchsia-100 text-fuchsia-800 border-fuchsia-300",
+  "bg-orange-100 text-orange-800 border-orange-300",
+  "bg-teal-100 text-teal-800 border-teal-300",
+];
+const hashIndex = (key: string, len: number) => {
+  let h = 0;
+  for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) >>> 0;
+  return h % len;
+};
+const userColor = (e: Ev) =>
+  USER_COLORS[hashIndex(String(e.created_by || e.created_by_name || "unknown"), USER_COLORS.length)];
 
 const TYPE_COLORS: Record<EventType, string> = {
   field_visit: "bg-blue-100 text-blue-700",
@@ -53,6 +74,7 @@ const OpsCalendarPage = () => {
   const [editing, setEditing] = useState<Ev | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [departments, setDepartments] = useState<string[]>([]);
+  const [colorBy, setColorBy] = useState<"type" | "person">("person");
 
   const load = async () => {
     setLoading(true);
@@ -73,6 +95,17 @@ const OpsCalendarPage = () => {
     while (d <= end || cells.length % 7 !== 0) { cells.push(d); d = addDays(d, 1); }
     return cells;
   }, [cursor, view]);
+
+  const colorFor = (e: Ev) => (colorBy === "person" ? userColor(e) : TYPE_COLORS[e.event_type]);
+
+  const people = useMemo(() => {
+    const map = new Map<string, Ev>();
+    events.forEach((e) => {
+      const key = String(e.created_by || e.created_by_name || "unknown");
+      if (!map.has(key)) map.set(key, e);
+    });
+    return Array.from(map.values());
+  }, [events]);
 
   const eventsForDay = (d: Date) => events.filter((e) => sameDay(new Date(e.start_at), d));
 
@@ -129,7 +162,14 @@ const OpsCalendarPage = () => {
           <Button size="icon" variant="outline" onClick={() => nav(1)}><ChevronRight className="h-4 w-4" /></Button>
           <span className="text-sm font-semibold ml-2">{label}</span>
         </div>
-        <div className="flex gap-1">
+        <div className="flex gap-1 items-center">
+          <div className="flex gap-1 mr-2">
+            {(["person", "type"] as const).map((c) => (
+              <Button key={c} size="sm" variant={colorBy === c ? "secondary" : "ghost"} onClick={() => setColorBy(c)}>
+                {c === "person" ? "Colour by person" : "Colour by type"}
+              </Button>
+            ))}
+          </div>
           {(["month", "week", "day"] as ViewMode[]).map((v) => (
             <Button key={v} size="sm" variant={view === v ? "default" : "outline"} onClick={() => setView(v)}>
               {v.charAt(0).toUpperCase() + v.slice(1)}
@@ -159,7 +199,7 @@ const OpsCalendarPage = () => {
                       <div className="space-y-1">
                         {evs.slice(0, 3).map((e) => (
                           <button key={e.id} onClick={() => openEdit(e)}
-                            className={`w-full text-left text-[10px] px-1.5 py-0.5 rounded truncate ${TYPE_COLORS[e.event_type]}`}>
+                            className={`w-full text-left text-[10px] px-1.5 py-0.5 rounded truncate ${colorFor(e)}`}>
                             {e.title}
                           </button>
                         ))}
@@ -185,7 +225,7 @@ const OpsCalendarPage = () => {
                       {evs.length === 0 && <p className="text-xs text-muted-foreground">No events</p>}
                       {evs.map((e) => (
                         <button key={e.id} onClick={() => openEdit(e)}
-                          className={`w-full text-left text-xs px-2 py-1 rounded ${TYPE_COLORS[e.event_type]}`}>
+                          className={`w-full text-left text-xs px-2 py-1 rounded ${colorFor(e)}`}>
                           <div className="font-semibold truncate">{e.title}</div>
                           <div className="text-[10px] opacity-80">{new Date(e.start_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</div>
                         </button>
@@ -201,9 +241,17 @@ const OpsCalendarPage = () => {
 
       {/* Legend */}
       <div className="flex flex-wrap gap-2">
-        {(Object.keys(TYPE_LABELS) as EventType[]).map((k) => (
-          <Badge key={k} className={`text-[10px] ${TYPE_COLORS[k]}`}>{TYPE_LABELS[k]}</Badge>
-        ))}
+        {colorBy === "person"
+          ? (people.length === 0
+              ? <span className="text-xs text-muted-foreground">No events yet</span>
+              : people.map((e) => (
+                  <Badge key={String(e.created_by || e.created_by_name)} className={`text-[10px] ${userColor(e)}`}>
+                    {e.created_by_name || "Unassigned"}
+                  </Badge>
+                )))
+          : (Object.keys(TYPE_LABELS) as EventType[]).map((k) => (
+              <Badge key={k} className={`text-[10px] ${TYPE_COLORS[k]}`}>{TYPE_LABELS[k]}</Badge>
+            ))}
       </div>
 
       <Dialog open={open} onOpenChange={setOpen}>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   ArrowLeft,
   Plus,
@@ -124,6 +124,8 @@ interface ProfileData {
 
 const PartnerProfilePage = () => {
   const { id } = useParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialTab = searchParams.get("tab") || "overview";
   const navigate = useNavigate();
   const [data, setData] = useState<ProfileData | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -389,9 +391,10 @@ const PartnerProfilePage = () => {
       </div>
 
       <Tabs
-        defaultValue="overview"
+        defaultValue={initialTab}
         onValueChange={(v) => {
           if (v === "rentals" && rentals === null) loadRentals();
+          setSearchParams(v === "overview" ? {} : { tab: v }, { replace: true });
         }}
       >
         <TabsList className="flex-wrap h-auto">

@@ -435,6 +435,17 @@ export const api = {
     staff: () => apiGet("/ops/staff"),
     departments: () => apiGet<string[]>("/ops/departments"),
     dashboard: () => apiGet("/ops/dashboard"),
+    uploadFile: async (file: File) => {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch(`${API_BASE_URL}/ops/uploads`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${tokenStore.getAccessToken() || ""}` },
+        body: fd,
+      });
+      const json = await res.json().catch(() => ({ success: false, error: "Upload failed" }));
+      return json as ApiResponse<{ file_url: string; file_name: string; file_type: string; file_size: number }>;
+    },
     dailyUpdates: {
       list: (params?: Record<string, string | number | undefined>) =>
         apiGet(`/ops/daily-updates${buildQS(params)}`),

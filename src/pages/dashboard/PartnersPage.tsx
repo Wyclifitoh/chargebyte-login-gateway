@@ -251,8 +251,12 @@ const PartnersPage = () => {
                       ? `Fixed ${formatKsh(Number(p.fixed_amount || 0))}`
                       : `${Number(p.revenue_share_percent ?? 0)}% share`}
                   </td>
-                  <td className="px-4 py-3 text-foreground capitalize">
-                    {p.disbursement_frequency || "monthly"} · day {p.disbursement_day || 5}
+                  <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      onClick={() => navigate(`/dashboard/partners/${p.id}?tab=disbursements`)}
+                      className="text-primary hover:underline capitalize text-left">
+                      {p.disbursement_frequency || "monthly"} · day {p.disbursement_day || 5}
+                    </button>
                   </td>
                   <td className="px-4 py-3 text-foreground">{p.stations_count ?? 0}</td>
                   <td className="px-4 py-3 text-foreground">{formatKsh(Number(p.pending_amount || 0))}</td>
@@ -264,6 +268,7 @@ const PartnersPage = () => {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem onClick={() => navigate(`/dashboard/partners/${p.id}`)}>View partner</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => navigate(`/dashboard/partners/${p.id}?tab=disbursements`)}>Rev share disbursements</DropdownMenuItem>
                         <DropdownMenuItem onClick={() => navigate(`/dashboard/partners/${p.id}`)}>Deploy machine</DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem onClick={() => setResetting(p)}>Reset password</DropdownMenuItem>

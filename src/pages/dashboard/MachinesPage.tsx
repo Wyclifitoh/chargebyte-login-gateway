@@ -101,15 +101,23 @@ const MachinesPage = () => {
         form.setError("station_id", { message: "Required" });
         return;
       }
-      // Location is fixed after creation — reassignment must be done by
-      // deploying the machine, not by silently editing its station.
+
       const payload = editing
-        ? { name: data.name, model: data.model, qr_code: data.qr_code, total_slots: data.total_slots }
+        ? {
+            name: data.name,
+            model: data.model,
+            qr_code: data.qr_code,
+            total_slots: data.total_slots,
+            station_id: data.station_id,
+          }
         : data;
+
       const res = editing
         ? await api.machines.update(editing.id, payload)
         : await api.machines.create(payload);
+      
       if (!res.success) throw new Error(res.error || "Failed");
+      
       toast.success(editing ? "Machine updated" : "Machine created");
       setDialogOpen(false);
       refetch();
@@ -301,37 +309,30 @@ const MachinesPage = () => {
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
-                {editing ? (
-                  <FormItem>
-                    <FormLabel>Location</FormLabel>
-                    <Input value={stationNameFor(editing)} disabled readOnly />
-                  </FormItem>
-                ) : (
-                  <FormField
-                    control={form.control}
-                    name="station_id"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Location</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select location" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {stationOptions.map((s) => (
-                              <SelectItem key={s.id} value={s.id}>
-                                {s.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                )}
+                <FormField
+                  control={form.control}
+                  name="station_id"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Location</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select location" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {stationOptions.map((s) => (
+                            <SelectItem key={s.id} value={s.id}>
+                              {s.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
                 <FormField
                   control={form.control}
                   name="total_slots"
