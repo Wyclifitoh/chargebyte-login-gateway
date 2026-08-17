@@ -434,9 +434,10 @@ exports.exportXlsx = async (req, res, next) => {
               COALESCE(SUM(r.total_amount), 0)     AS total_amount,
               COALESCE(SUM(r.deposit_amount), 0)   AS total_deposits,
               COALESCE(SUM(r.duration_minutes), 0) AS total_duration_minutes
-         FROM rentals r ${where}`,
+         ${baseSql}`,
       values,
     );
+
     const sum = sumRows[0] || {};
 
     const wb = new ExcelJS.Workbook();
