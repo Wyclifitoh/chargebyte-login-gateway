@@ -470,7 +470,9 @@ exports.exportXlsx = async (req, res, next) => {
         phone_number: r.phone_number,
         station_name: r.station_name || "",
         machine_name: r.machine_name || "",
-        powerbank_id: r.powerbank_id || "",
+        machine_model: r.machine_model || "",
+        manufacturer_trade_no: r.manufacturer_trade_no || "",
+
         start_time: r.start_time || "",
         end_time: r.end_time || "",
         duration_minutes: Number(r.duration_minutes) || 0,
