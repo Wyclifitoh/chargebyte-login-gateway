@@ -375,7 +375,7 @@ exports.sendSms = async (req, res, next) => {
 // Stream the full filtered rental set as an .xlsx file (server-side export)
 exports.exportXlsx = async (req, res, next) => {
   try {
-    const { status, station_id, search } = req.query;
+    const { status, station_id, machine_model, search } = req.query;
     const { from, to } = resolveRange(req.query);
 
     const conditions = [];
@@ -385,8 +385,12 @@ exports.exportXlsx = async (req, res, next) => {
       values.push(status);
     }
     if (station_id) {
-      conditions.push("r.station_id = ?");
+      conditions.push("m.station_id = ?");
       values.push(station_id);
+    }
+    if (machine_model) {
+      conditions.push("r.machine_model = ?");
+      values.push(machine_model);
     }
     if (from) {
       conditions.push("r.created_at >= ?");
@@ -398,28 +402,32 @@ exports.exportXlsx = async (req, res, next) => {
     }
     if (search) {
       conditions.push(
-        "(r.rental_code LIKE ? OR r.phone_number LIKE ? OR r.powerbank_id LIKE ?)",
+        "(r.rental_code LIKE ? OR r.phone_number LIKE ? OR r.machine_model LIKE ?)",
       );
       values.push(`%${search}%`, `%${search}%`, `%${search}%`);
     }
     const where = conditions.length ? " WHERE " + conditions.join(" AND ") : "";
 
+    const baseSql = `FROM rentals r
+                     LEFT JOIN machines m ON m.model = r.machine_model
+                     LEFT JOIN cb_stations s ON s.id = m.station_id
+                     ${where}`;
+
     const [rows] = await db.query(
       `SELECT r.rental_code, r.phone_number,
-              s.name AS station_name, m.name AS machine_name,
-              r.powerbank_id,
+              s.name AS station_name,
+              COALESCE(m.name, r.machine_model) AS machine_name,
+              r.machine_model, r.manufacturer_trade_no,
               DATE_FORMAT(r.start_time, '%Y-%m-%d %H:%i:%s') AS start_time,
               DATE_FORMAT(CONVERT_TZ(r.end_time, '+08:00', '+00:00'),   '%Y-%m-%d %H:%i:%s') AS end_time,
               r.duration_minutes, r.total_amount, r.deposit_amount,
               r.deposit_refunded, r.status,
               DATE_FORMAT(r.created_at, '%Y-%m-%d %H:%i:%s') AS created_at
-         FROM rentals r
-         LEFT JOIN cb_stations s ON r.station_id = s.id
-         LEFT JOIN machines m   ON r.machine_id = m.id
-         ${where}
+         ${baseSql}
          ORDER BY r.created_at DESC`,
       values,
     );
+
 
     const [sumRows] = await db.query(
       `SELECT COUNT(*) AS total_rentals,
