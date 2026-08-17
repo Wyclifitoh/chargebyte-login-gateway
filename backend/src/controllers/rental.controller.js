@@ -315,7 +315,9 @@ exports.getSummary = async (req, res, next) => {
          SUM(CASE WHEN r.status = 'completed' THEN 1 ELSE 0 END) AS completed_count,
          SUM(CASE WHEN r.status = 'overdue'   THEN 1 ELSE 0 END) AS overdue_count,
          SUM(CASE WHEN r.status = 'cancelled' THEN 1 ELSE 0 END) AS cancelled_count
-       FROM rentals r ${where}`,
+       FROM rentals r
+       LEFT JOIN machines m ON m.model = r.machine_model
+       ${where}`,
       values,
     );
 
