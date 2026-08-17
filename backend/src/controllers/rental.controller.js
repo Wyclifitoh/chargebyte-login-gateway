@@ -450,7 +450,9 @@ exports.exportXlsx = async (req, res, next) => {
       { header: "Phone", key: "phone_number", width: 15 },
       { header: "Station", key: "station_name", width: 22 },
       { header: "Machine", key: "machine_name", width: 18 },
-      { header: "Powerbank", key: "powerbank_id", width: 16 },
+      { header: "Machine Model", key: "machine_model", width: 18 },
+      { header: "Trade No", key: "manufacturer_trade_no", width: 20 },
+
       { header: "Start", key: "start_time", width: 20 },
       { header: "End", key: "end_time", width: 20 },
       { header: "Duration (min)", key: "duration_minutes", width: 14 },
