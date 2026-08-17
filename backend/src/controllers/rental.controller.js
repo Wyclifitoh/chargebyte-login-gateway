@@ -168,6 +168,10 @@ exports.getAll = async (req, res, next) => {
       conditions.push("m.station_id = ?");
       values.push(station_id);
     }
+    if (machine_model) {
+      conditions.push("r.machine_model = ?");
+      values.push(machine_model);
+    }
     if (from) {
       conditions.push("r.created_at >= ?");
       values.push(fmt(from));
