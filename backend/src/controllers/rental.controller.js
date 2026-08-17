@@ -270,7 +270,7 @@ exports.cancel = async (req, res, next) => {
 // Aggregate totals across the entire filtered period (not just current page)
 exports.getSummary = async (req, res, next) => {
   try {
-    const { status, station_id, search } = req.query;
+    const { status, station_id, machine_model, search } = req.query;
     const { from, to } = resolveRange(req.query);
 
     const conditions = [];
@@ -280,8 +280,12 @@ exports.getSummary = async (req, res, next) => {
       values.push(status);
     }
     if (station_id) {
-      conditions.push("r.station_id = ?");
+      conditions.push("m.station_id = ?");
       values.push(station_id);
+    }
+    if (machine_model) {
+      conditions.push("r.machine_model = ?");
+      values.push(machine_model);
     }
     if (from) {
       conditions.push("r.created_at >= ?");
@@ -293,11 +297,12 @@ exports.getSummary = async (req, res, next) => {
     }
     if (search) {
       conditions.push(
-        "(r.rental_code LIKE ? OR r.phone_number LIKE ? OR r.powerbank_id LIKE ?)",
+        "(r.rental_code LIKE ? OR r.phone_number LIKE ? OR r.machine_model LIKE ?)",
       );
       values.push(`%${search}%`, `%${search}%`, `%${search}%`);
     }
     const where = conditions.length ? " WHERE " + conditions.join(" AND ") : "";
+
 
     const [rows] = await db.query(
       `SELECT
