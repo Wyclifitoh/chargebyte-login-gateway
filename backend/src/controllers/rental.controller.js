@@ -147,7 +147,7 @@ exports.getAllV1 = async (req, res, next) => {
 
 exports.getAll = async (req, res, next) => {
   try {
-    const { status, station_id, search } = req.query;
+    const { status, station_id, machine_model, search } = req.query;
     const page = Math.max(1, parseInt(req.query.page, 10) || 1);
     const limit = Math.min(
       200,
