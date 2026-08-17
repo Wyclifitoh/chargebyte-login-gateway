@@ -1020,7 +1020,9 @@ exports.getRentals = async (req, res, next) => {
               COALESCE(NULLIF(r.machine_id, ''), pmd.machine_id) AS machine_id,
               COALESCE(rm.name, dm.name) AS machine_name,
               pmd.id AS deployment_id, pmd.deployed_at, pmd.undeployed_at,
-              r.phone_number, r.total_amount, r.status, r.start_time, r.end_time, r.created_at
+              r.phone_number, r.total_amount, r.status, r.start_time,
+              CONVERT_TZ(r.end_time, '+08:00', '+00:00') AS end_time,
+              r.created_at
        ${partnerRentalWindowFromSql()}
        LEFT JOIN cb_stations s ON s.id = r.station_id
        LEFT JOIN machines rm ON rm.id = r.machine_id

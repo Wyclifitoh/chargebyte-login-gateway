@@ -1,10 +1,12 @@
 const { v4: uuidv4 } = require("uuid");
 const db = require("../config/database");
+const path = require("path");
 
 const DEPARTMENTS = ["ICT", "Finance", "Operations", "Marketing", "Support", "HR", "Executive", "Field"];
 const PRIORITIES = ["low", "medium", "high", "critical"];
 const TASK_STATUSES = ["pending", "in_progress", "completed", "cancelled"];
 const DU_STATUSES = ["draft", "submitted"];
+const DEPT_ENTRY_TYPES = ["update", "report", "meeting_minutes"];
 const EVENT_TYPES = ["field_visit", "meeting", "deadline", "dept_activity", "maintenance", "company_event"];
 
 const isPrivileged = (role) => role === "super_admin" || role === "admin";
@@ -33,6 +35,23 @@ exports.staff = async (_req, res, next) => {
 
 exports.departments = async (_req, res) => res.json({ success: true, data: DEPARTMENTS });
 
+// --------- File uploads (department reports / meeting minutes) ---------
+exports.uploadFile = async (req, res, next) => {
+  try {
+    if (!req.file) return res.status(400).json({ success: false, error: "file required" });
+    const url = `/uploads/ops/${path.basename(req.file.filename)}`;
+    res.status(201).json({
+      success: true,
+      data: {
+        file_url: url,
+        file_name: req.file.originalname,
+        file_type: req.file.mimetype,
+        file_size: req.file.size,
+      },
+    });
+  } catch (e) { next(e); }
+};
+
 // --------- Dashboard summary ---------
 exports.dashboard = async (req, res, next) => {
   try {
@@ -40,25 +59,31 @@ exports.dashboard = async (req, res, next) => {
     const userScope = priv ? "" : "AND user_id = ?";
     const userVal = priv ? [] : [req.user.id];
 
+    // Updates run on a WEEKLY cadence — "today" figures are computed against
+    // the current ISO week rather than the calendar day.
     const [[submittedToday]] = await db.query(
       `SELECT COUNT(DISTINCT user_id) AS n FROM ops_daily_updates
-       WHERE update_date = CURDATE() AND status = 'submitted' ${userScope}`, userVal);
+       WHERE YEARWEEK(update_date, 1) = YEARWEEK(CURDATE(), 1)
+         AND status = 'submitted' ${userScope}`, userVal);
     const [[activeStaff]] = await db.query(
       `SELECT COUNT(*) AS n FROM system_users WHERE is_active = 1 AND role IN ('super_admin','admin','staff')`);
     const [[activeField]] = await db.query(
       `SELECT COUNT(*) AS n FROM ops_field_activities
-       WHERE activity_date = CURDATE() AND check_in_at IS NOT NULL AND check_out_at IS NULL ${userScope}`, userVal);
+       WHERE activity_date >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
+         AND check_in_at IS NOT NULL AND check_out_at IS NULL ${userScope}`, userVal);
     const [[openTasks]] = await db.query(
       `SELECT COUNT(*) AS n FROM ops_tasks WHERE status IN ('pending','in_progress')
        ${priv ? "" : "AND (assigned_to = ? OR assigned_by = ?)"}`,
       priv ? [] : [req.user.id, req.user.id]);
     const [[completedToday]] = await db.query(
-      `SELECT COUNT(*) AS n FROM ops_tasks WHERE status = 'completed' AND DATE(completed_at) = CURDATE()
+      `SELECT COUNT(*) AS n FROM ops_tasks WHERE status = 'completed'
+       AND completed_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
        ${priv ? "" : "AND (assigned_to = ? OR assigned_by = ?)"}`,
       priv ? [] : [req.user.id, req.user.id]);
     const [[issuesToday]] = await db.query(
       `SELECT COUNT(*) AS n FROM ops_field_activities
-       WHERE activity_date = CURDATE() AND issues IS NOT NULL AND issues <> '' ${userScope}`, userVal);
+       WHERE activity_date >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
+         AND issues IS NOT NULL AND issues <> '' ${userScope}`, userVal);
 
     const [recentUpdates] = await db.query(
       `SELECT d.id, d.department, d.update_date, d.status, d.work_summary,
@@ -72,7 +97,7 @@ exports.dashboard = async (req, res, next) => {
     const [byDept] = await db.query(
       `SELECT department, COUNT(*) AS updates
        FROM ops_daily_updates
-       WHERE update_date >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+       WHERE update_date >= DATE_SUB(CURDATE(), INTERVAL 28 DAY)
        GROUP BY department`);
 
     const [upcoming] = await db.query(
@@ -257,10 +282,13 @@ exports.deleteFieldActivity = async (req, res, next) => {
 // --------- Department Updates ---------
 exports.listDepartmentUpdates = async (req, res, next) => {
   try {
-    const { department, priority, search } = req.query;
+    const { department, priority, search, entry_type } = req.query;
     const conds = []; const vals = [];
     if (department) { conds.push("d.department = ?"); vals.push(department); }
     if (priority) { conds.push("d.priority = ?"); vals.push(priority); }
+    if (entry_type && DEPT_ENTRY_TYPES.includes(entry_type)) {
+      conds.push("d.entry_type = ?"); vals.push(entry_type);
+    }
     if (search) {
       conds.push("(d.title LIKE ? OR d.summary LIKE ? OR d.details LIKE ?)");
       const s = `%${search}%`; vals.push(s, s, s);
@@ -280,12 +308,16 @@ exports.createDepartmentUpdate = async (req, res, next) => {
     const b = req.body || {};
     if (!b.title || !b.department) return res.status(400).json({ success: false, error: "title and department required" });
     const priority = PRIORITIES.includes(b.priority) ? b.priority : "medium";
+    const entryType = DEPT_ENTRY_TYPES.includes(b.entry_type) ? b.entry_type : "update";
     const id = uuidv4();
     await db.query(
       `INSERT INTO ops_department_updates
-       (id, user_id, department, title, summary, details, priority)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [id, req.user.id, b.department, b.title, b.summary || null, b.details || null, priority]);
+       (id, user_id, department, entry_type, title, summary, details, priority,
+        meeting_date, attendees, file_url, file_name)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [id, req.user.id, b.department, entryType, b.title, b.summary || null,
+       b.details || null, priority, b.meeting_date || null, b.attendees || null,
+       b.file_url || null, b.file_name || null]);
     if (priority === "high" || priority === "critical") {
       await notify(["super_admin", "admin"], `[${b.department}] ${b.title}`, b.summary || "New department update", "ops_dept_update", priority);
     }
@@ -295,11 +327,13 @@ exports.createDepartmentUpdate = async (req, res, next) => {
 
 exports.updateDepartmentUpdate = async (req, res, next) => {
   try {
-    const fields = ["department", "title", "summary", "details", "priority"];
+    const fields = ["department", "entry_type", "title", "summary", "details",
+                    "priority", "meeting_date", "attendees", "file_url", "file_name"];
     const updates = []; const vals = [];
     for (const f of fields) {
       if (req.body[f] === undefined) continue;
       if (f === "priority" && !PRIORITIES.includes(req.body[f])) continue;
+      if (f === "entry_type" && !DEPT_ENTRY_TYPES.includes(req.body[f])) continue;
       updates.push(`${f} = ?`); vals.push(req.body[f] === "" ? null : req.body[f]);
     }
     if (!updates.length) return res.status(400).json({ success: false, error: "No fields" });

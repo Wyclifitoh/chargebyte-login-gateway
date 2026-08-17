@@ -1,6 +1,11 @@
 const db = require("../config/database");
 const ExcelJS = require("exceljs");
 
+// The manufacturer writes rental *return* timestamps (end_time,
+// deposit_refund_time) in China Standard Time (UTC+8) while start_time is
+// stored on the same basis the UI renders. Normalise the return timestamps
+// back to the start_time basis so durations and displayed times agree.
+
 function resolveRange(query) {
   const period = (query.period || "").toLowerCase();
   const now = new Date();
@@ -114,8 +119,8 @@ exports.getAllV1 = async (req, res, next) => {
     const [rows] = await db.query(
       `SELECT r.*,
               DATE_FORMAT(r.start_time, '%Y-%m-%dT%H:%i:%s') AS start_time,
-              DATE_FORMAT(r.end_time,   '%Y-%m-%dT%H:%i:%s') AS end_time,
-              DATE_FORMAT(r.deposit_refund_time, '%Y-%m-%dT%H:%i:%s') AS deposit_refund_time,
+              DATE_FORMAT(CONVERT_TZ(r.end_time, '+08:00', '+00:00'),   '%Y-%m-%dT%H:%i:%s') AS end_time,
+              DATE_FORMAT(CONVERT_TZ(r.deposit_refund_time, '+08:00', '+00:00'), '%Y-%m-%dT%H:%i:%s') AS deposit_refund_time,
               DATE_FORMAT(r.created_at, '%Y-%m-%dT%H:%i:%s') AS created_at,
               DATE_FORMAT(r.updated_at, '%Y-%m-%dT%H:%i:%s') AS updated_at,
               s.name AS station_name, m.name AS machine_name
@@ -194,8 +199,8 @@ exports.getAll = async (req, res, next) => {
     const [rows] = await db.query(
       `SELECT r.*,
               DATE_FORMAT(r.start_time, '%Y-%m-%dT%H:%i:%s') AS start_time,
-              DATE_FORMAT(r.end_time,   '%Y-%m-%dT%H:%i:%s') AS end_time,
-              DATE_FORMAT(r.deposit_refund_time, '%Y-%m-%dT%H:%i:%s') AS deposit_refund_time,
+              DATE_FORMAT(CONVERT_TZ(r.end_time, '+08:00', '+00:00'),   '%Y-%m-%dT%H:%i:%s') AS end_time,
+              DATE_FORMAT(CONVERT_TZ(r.deposit_refund_time, '+08:00', '+00:00'), '%Y-%m-%dT%H:%i:%s') AS deposit_refund_time,
               DATE_FORMAT(r.created_at, '%Y-%m-%dT%H:%i:%s') AS created_at,
               DATE_FORMAT(r.updated_at, '%Y-%m-%dT%H:%i:%s') AS updated_at,
               s.name AS station_name,
@@ -229,8 +234,8 @@ exports.getById = async (req, res, next) => {
     const [rows] = await db.query(
       `SELECT r.*,
               DATE_FORMAT(r.start_time, '%Y-%m-%dT%H:%i:%s') AS start_time,
-              DATE_FORMAT(r.end_time,   '%Y-%m-%dT%H:%i:%s') AS end_time,
-              DATE_FORMAT(r.deposit_refund_time, '%Y-%m-%dT%H:%i:%s') AS deposit_refund_time,
+              DATE_FORMAT(CONVERT_TZ(r.end_time, '+08:00', '+00:00'),   '%Y-%m-%dT%H:%i:%s') AS end_time,
+              DATE_FORMAT(CONVERT_TZ(r.deposit_refund_time, '+08:00', '+00:00'), '%Y-%m-%dT%H:%i:%s') AS deposit_refund_time,
               DATE_FORMAT(r.created_at, '%Y-%m-%dT%H:%i:%s') AS created_at,
               DATE_FORMAT(r.updated_at, '%Y-%m-%dT%H:%i:%s') AS updated_at,
               s.name AS station_name, m.name AS machine_name
@@ -404,7 +409,7 @@ exports.exportXlsx = async (req, res, next) => {
               s.name AS station_name, m.name AS machine_name,
               r.powerbank_id,
               DATE_FORMAT(r.start_time, '%Y-%m-%d %H:%i:%s') AS start_time,
-              DATE_FORMAT(r.end_time,   '%Y-%m-%d %H:%i:%s') AS end_time,
+              DATE_FORMAT(CONVERT_TZ(r.end_time, '+08:00', '+00:00'),   '%Y-%m-%d %H:%i:%s') AS end_time,
               r.duration_minutes, r.total_amount, r.deposit_amount,
               r.deposit_refunded, r.status,
               DATE_FORMAT(r.created_at, '%Y-%m-%d %H:%i:%s') AS created_at

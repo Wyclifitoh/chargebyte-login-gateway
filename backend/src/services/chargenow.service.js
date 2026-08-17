@@ -250,31 +250,14 @@ async function applyCabinetToMachine(deviceId, raw) {
   }
 
   const machineId = machineResult[0].id;
-  const currentStationId = machineResult[0].station_id;
 
-  // If shop data exists and we have a station, update the station too
-  if (n.shop_name && currentStationId) {
-    await db
-      .query(
-        `UPDATE cb_stations 
-       SET 
-         name = COALESCE(?, name),
-         address = COALESCE(?, address),
-         latitude = COALESCE(?, latitude),
-         longitude = COALESCE(?, longitude)
-       WHERE id = ?`,
-        [
-          n.shop_name,
-          n.shop_address,
-          n.shop_latitude,
-          n.shop_longitude,
-          currentStationId,
-        ],
-      )
-      .catch((err) => console.error("Error updating station:", err));
-  }
+  // NOTE: the manufacturer sync is telemetry-only. It must NEVER overwrite
+  // human-curated naming (machine name, station/location name or address) —
+  // the vendor returns the same shop name for every cabinet, which previously
+  // renamed every machine/station identically. Only live status + slot
+  // telemetry is written back here.
 
-  // Update the machine
+  // Update the machine (status/telemetry only)
   await db.query(
     `UPDATE machines
      SET 
@@ -283,9 +266,8 @@ async function applyCabinetToMachine(deviceId, raw) {
        empty_slots = COALESCE(?, empty_slots),
        busy_slots = COALESCE(?, busy_slots),
        total_slots = COALESCE(?, total_slots),
-       cabinet_model = COALESCE(?, cabinet_model),
-       manufacturer_cabinet_id = COALESCE(?, manufacturer_cabinet_id),
-       cabinet_device_id = COALESCE(?, cabinet_device_id),
+       manufacturer_cabinet_id = COALESCE(manufacturer_cabinet_id, ?),
+       cabinet_device_id = COALESCE(cabinet_device_id, ?),
        status = CASE 
          WHEN ? = 1 THEN 'online'
          WHEN ? = 0 THEN 'offline'
@@ -300,7 +282,6 @@ async function applyCabinetToMachine(deviceId, raw) {
       n.empty_slots,
       n.busy_slots,
       n.total_slots,
-      n.cabinet_model,
       n.manufacturer_cabinet_id,
       deviceId,
       n.is_online,

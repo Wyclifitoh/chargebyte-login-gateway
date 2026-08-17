@@ -4,7 +4,15 @@ const db = require("../config/database");
 exports.getAll = async (req, res, next) => {
   try {
     const { search, status, station_id } = req.query;
-    let sql = `SELECT m.*, s.name as station_name FROM machines m JOIN cb_stations s ON m.station_id = s.id`;
+    let sql = `SELECT m.*, s.name AS station_name, s.address AS station_address,
+                      COALESCE(d.deployed_at, m.created_at) AS deployed_at
+               FROM machines m
+               LEFT JOIN cb_stations s ON m.station_id = s.id
+               LEFT JOIN (
+                 SELECT machine_id, MIN(deployed_at) AS deployed_at
+                 FROM partner_machine_deployments
+                 GROUP BY machine_id
+               ) d ON d.machine_id = m.id`;
     const conditions = [];
     const values = [];
 
